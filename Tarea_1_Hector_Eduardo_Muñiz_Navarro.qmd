@@ -1,0 +1,405 @@
+---
+title: "Datos Espaciales"
+format: 
+  html:
+    grid: 
+      body-width: 950px
+editor: visual
+---
+
+# Introducción
+
+Los datos espaciales son información que contiene una referencia geográfica, es decir, datos que están vinculados a una ubicación específica en la superficie terrestre. En el contexto de R, trabajamos frecuentemente con estos datos para realizar análisis geoespaciales, crear mapas y visualizar patrones espaciales.
+
+# ¿Qué son los archivos Shapefile?
+
+Los archivos **Shapefile** (con extensión `.shp`) son uno de los formatos más comunes para almacenar datos vectoriales geoespaciales. Fueron desarrollados por ESRI y se han convertido en un estándar de facto en la industria GIS.
+
+## Componentes de un Shapefile
+
+Un shapefile no es un archivo único, sino un conjunto de archivos que trabajan juntos:
+
+-   **`.shp`**: Archivo principal que contiene la geometría de las características espaciales
+-   **`.shx`**: Archivo de índice que permite acceso rápido a los registros
+-   **`.dbf`**: Base de datos en formato dBASE que contiene los atributos
+-   **`.prj`**: Archivo de proyección que define el sistema de coordenadas
+-   **`.cpg`**: Archivo de codificación de caracteres (opcional)
+
+## Tipos de geometrías
+
+Los shapefiles pueden contener tres tipos principales de geometrías:
+
+1.  **Puntos**: Ubicaciones específicas (coordenadas x, y)
+2.  **Líneas**: Secuencias de puntos conectados (ríos, carreteras)
+3.  **Polígonos**: Áreas cerradas (límites administrativos, lagos)
+4.  **Multipuntos, Multilíneas y Multipolígonos**: Colecciones de los tipos anteriores
+
+# Fuente de datos: INEGI
+
+Para este ejemplo, utilizaremos los datos del **Instituto Nacional de Estadística y Geografía (INEGI)** de México. Específicamente, el Marco Geoestadístico disponible en:
+
+**Enlace de descarga**: https://www.inegi.org.mx/app/biblioteca/ficha.html?upc=794551132173
+
+Este conjunto de datos para el estado de Michoacán incluye: - Límites estatales (archivos `16ent.*`) - Límites municipales (archivos `16mun.*`) - Otras divisiones territoriales
+
+# Configuración del entorno
+
+Primero, carguemos las librerías necesarias:
+
+```{r setup}
+#| warning: false
+#| message: false
+
+# Cargar librerías
+library(tidyverse)    # Para manipulación de datos
+library(sf)          # Para datos espaciales
+library(viridis)     # Para paletas de colores
+
+# Configurar tema para los mapas
+theme_set(theme_minimal())
+```
+
+## Lectura de datos espaciales
+
+### Cargando los límites estatales
+
+Primero, leemos el archivo shapefile para Michoacán:
+
+```{r entidades}
+# Nota: Asegúrate de que todos los archivos (shp, shx, dbf, prj, cpg) estén en el mismo directorio: data
+
+Michoacán_estado <- st_read("data/16ent.shp", options = "ENCODING=LATIN1", quiet = TRUE)
+```
+
+### Visualización del estado de Michoacán
+
+```{r mapa_Michoacán_estado}
+# Crear mapa básico de Michoacán
+mapa_Michoacán <- ggplot(Michoacán_estado) +
+  geom_sf(fill = "lightblue", color = "darkblue", size = 0.8) +
+  labs(
+    title = "Estado de Michoacán",
+    subtitle = "Límites estatales",
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.caption = element_text(size = 10)
+  )
+
+print(mapa_Michoacán)
+```
+
+## Trabajando con límites municipales
+
+### Cargando los datos municipales
+
+Ahora carguemos los límites municipales:
+
+```{r municipios}
+municipios_Michoacán <- st_read("data/16mun.shp", options = "ENCODING=LATIN1", quiet = TRUE)
+
+# Explorar los datos
+cat("Número de municipios en Michoacán:", nrow(municipios_Michoacán), "\n")
+cat("Primeros 10 municipios:\n")
+print(municipios_Michoacán$NOMGEO[1:10])
+```
+
+### Visualización de municipios
+
+```{r mapa_municipios}
+# Crear mapa de municipios de Michoacán
+mapa_municipios <- ggplot(municipios_Michoacán) +
+  geom_sf(fill = "lightgreen", color = "white", size = 0.3) +
+  labs(
+    title = "Municipios de Michoacán",
+    subtitle = paste("Total de municipios:", nrow(municipios_Michoacán)),
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.caption = element_text(size = 10)
+  )
+
+print(mapa_municipios)
+```
+
+### Destacando algunos municipios importantes
+
+```{r municipios_importantes}
+# Identificar algunos municipios importantes
+municipios_importantes <- c("Ocampo", "Morelia", "La piedad", 
+                          "Aguililla", "Puerto Vallarta", "Lagos de Moreno")
+
+# Crear una variable para destacar estos municipios
+municipios_Michoacán <- municipios_Michoacán %>%
+  mutate(
+    importante = case_when(
+      NOMGEO %in% municipios_importantes ~ "Importante",
+      TRUE ~ "Otros"
+    )
+  )
+
+# Crear mapa destacando municipios importantes
+mapa_destacados <- ggplot(municipios_Michoacán) +
+  geom_sf(aes(fill = importante), color = "white", size = 0.2) +
+  scale_fill_manual(
+    values = c("Importante" = "darkblue", "Otros" = "lightblue"),
+    name = "Clasificación"
+  ) +
+  labs(
+    title = "Municipios Importantes de Michoacán",
+    subtitle = "Se destacan algunos municipios principales",
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.caption = element_text(size = 10),
+    legend.position = "bottom"
+  )
+
+print(mapa_destacados)
+```
+
+## Análisis espacial básico
+
+### Calculando áreas
+
+```{r areas}
+# Calcular área de cada municipio (en km²)
+municipios_Michoacán <- municipios_Michoacán %>%
+  mutate(area_km2 = as.numeric(st_area(.)) / 1e6)  # Convertir m² a km²
+
+# Los 10 municipios más grandes
+municipios_grandes <- municipios_Michoacán |> 
+  st_drop_geometry() |> 
+  arrange(desc(area_km2)) |> 
+  select(NOMGEO, area_km2) |> 
+  head(10)
+
+print("Los 10 municipios más grandes de Michoacán:")
+knitr::kable(municipios_grandes, 
+             col.names = c("Municipio", "Área (km²)"),
+             digits = 2)
+```
+
+### Mapa de áreas
+
+```{r mapa_areas}
+# Crear mapa coloreado por área
+mapa_areas <- ggplot(municipios_Michoacán) +
+  geom_sf(aes(fill = area_km2), color = "white", size = 0.1) +
+  scale_fill_viridis_c(
+    name = "Área\n(km²)",
+    trans = "log10",
+    labels = scales::comma_format()
+  ) +
+  labs(
+    title = "Área de los Municipios de Michoacán",
+    subtitle = "Coloreado por área en escala logarítmica",
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.caption = element_text(size = 10),
+    legend.position = "right"
+  )
+
+print(mapa_areas)
+```
+
+```{r}
+#| code-fold: true
+#| warning: false
+#| message: false
+
+
+#datos_total <- read_csv("1_estadistica_descriptiva/data/cpv_valor_16.csv", na = c("ND"))
+datos_total <- read_csv("data/cpv_valor_16.csv", na = c("ND"))
+
+datos_total <- datos_total |> filter(año == 2020)
+#table(datos_total$indicador)
+datos_seleccion <- datos_total |> 
+  filter(indicador %in% c("Porcentaje de la población de 3 a 5 años que asiste a la escuela", "Porcentaje de la población de 12 a 14 años que asiste a la escuela", "Porcentaje de la población de 15 a 24 años que asiste a la escuela", "Porcentaje de población de 15 años y más con escolaridad básica", "Población de 6 a 14 años que no sabe leer y escribir", "Porcentaje de la población de 5 y más años migrante según causa: Trabajo", "Porcentaje de personas de 15 años y más alfabetas", "Grado promedio de escolaridad de la población de 15 y más años" ),desc_municipio != "Estata,l") |> 
+  select(desc_municipio, indicador, valor)
+```
+
+```{r}
+#| code-fold: true
+#| fig-width: 8
+#| fig-align: center
+
+
+ggplot(datos_seleccion) +
+  geom_sf(aes(fill = porcentaje_de_la_población_de_3_a_5_anos_que_asiste_a_la _escuela ), color = "white", size = 0.1) +
+  scale_fill_viridis_c(
+    name = "poblacion_de_15_a_19_anos"
+  ) +
+  labs(
+    title = "Poblacion de 15 a 19 años de los Municipios de Queretaro",
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.caption = element_text(size = 10),
+    legend.position = "right"
+  )
+```
+
+```{r}
+ggplot(datos_seleccion) +
+  geom_sf(aes(fill = edad_mediana), color = "white", size = 0.1) +
+  scale_fill_viridis_c(name = "Edad (mediana)") +
+  labs(
+    title = "Edad (mediana) de los Municipios de Querétaro",
+    caption = "Fuente: INEGI - Marco Geoestadístico"
+  ) +
+  theme_void()
+```
+
+La hipótesis que trabajaré será el alto nivel de personas involucradas en el crimen organizado en Michoacán, especialmente hombres jóvenes, dados los porcentajes de la población masculina de 15 años o más con bajo nivel de escolaridad, con el bajo porcentaje de población de 12 a 14 años que asiste a la escuela, de el bajo porcentaje de población que no sabe leer ni escribir, para tratar de explicar la falta de acceso a educación básica y que sirve como detonante para que los hombre jóvenes, accedan o entren al crimen organizado como una forma de acceder a una vida de menos carencias a falta de la educación necesaria para acceder a empleos de calidad.
+
+\# Filtrar solo Michoacán y año 2020
+
+datos_mich \<- datos_total \|\>
+
+filter(año == 2020, entidad == "Michoacán de Ocampo") \|\>
+
+filter(indicador %in% c(
+
+"Porcentaje de la población de 3 a 5 años que asiste a la escuela",
+
+"Porcentaje de la población de 12 a 14 años que asiste a la escuela",
+
+"Porcentaje de la población de 15 a 24 años que asiste a la escuela",
+
+"Porcentaje de población de 15 años y más con escolaridad básica",
+
+"Población de 6 a 14 años que no sabe leer y escribir",
+
+"Porcentaje de la población de 5 y más años migrante según causa: Trabajo",
+
+"Porcentaje de personas de 15 años y más alfabetas",
+
+"Grado promedio de escolaridad de la población de 15 y más años"
+
+),
+
+desc_municipio != "Estatal") \|\>
+
+select(desc_municipio, indicador, valor)
+
+```{r}
+datos <- datos_seleccion |>
+    pivot_wider(names_from = indicador, values_from = valor) 
+
+datos <- datos |> 
+  clean_names()
+ 
+
+# Corrección de nombres de municipios
+
+datos <- datos |> 
+  mutate(desc_municipio = if_else(desc_municipio == "Aguililla", "Aguililla", desc_municipio))
+
+datos <- datos |> 
+  mutate(NOMGEO = desc_municipio)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+# 1️ Convertir los datos a formato largo (long)
+datos_long <- datos |>
+  pivot_longer(
+    cols = -desc_municipio,
+    names_to = "indicador",
+    values_to = "valor"
+  )
+
+# 
+dato_mich <- datos_long |>
+  filter(!is.na(valor), desc_municipio != "Estatal")
+
+# --- Gráficas --- #
+
+# . Asistencia escolar por grupo de edad
+ggplot(
+  datos_mich |> 
+    filter(indicador %in% c(
+      "Porcentaje de la población de 12 a 14 años que asiste a la escuela",
+      "Porcentaje de la población de 15 a 24 años que asiste a la escuela"
+    )),
+  aes(x = fct_reorder(desc_municipio, valor), y = valor, fill = indicador)
+) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(
+    title = "Cobertura escolar en Michoacán (2020)",
+    subtitle = "Asistencia a la escuela en jóvenes de 12 a 24 años",
+    x = "Municipio",
+    y = "Porcentaje",
+    fill = "Grupo de edad"
+  ) +
+  theme_minimal()
+
+ "Alfabetización vs analfabetismo infantil"
+ggplot(
+  datos_mich |> 
+    filter(indicador %in% c(
+      "Porcentaje de personas de 15 años y más alfabetas",
+      "Población de 6 a 14 años que no sabe leer y escribir"
+    )),
+  aes(x = fct_reorder(desc_municipio, valor), y = valor, fill = indicador)
+) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(
+    title = "Relación entre alfabetización y analfabetismo infantil",
+    subtitle = "Michoacán, 2020",
+    x = "Municipio",
+    y = "Porcentaje",
+    fill = "Indicador"
+  ) +
+  theme_minimal()
+
+"Correlación entre escolaridad básica y alfabetización"
+esc_alf <- datos_mich |> 
+  filter(indicador %in% c(
+    "Porcentaje de población de 15 años y más con escolaridad básica",
+    "Porcentaje de personas de 15 años y más alfabetas"
+  )) |> 
+  pivot_wider(names_from = indicador, values_from = valor)
+
+ggplot(esc_alf, aes(
+  x = `Porcentaje de población de 15 años y más con escolaridad básica`,
+  y = `Porcentaje de personas de 15 años y más alfabetas`
+)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(
+    title = "Correlación entre escolaridad básica y alfabetización",
+    subtitle = "Michoacán, 2020",
+    x = "Escolaridad básica (%)",
+    y = "Alfabetización (%)"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+"Llego a la conclusión que ya analizadas las gráficas de la asistencia a la escuela de jóvenes de 12 a 14 años, la relación entre alfabetización y analfabetización en cada municipio, nos damos cuenta que el porcentaje de niños quec acceden a una eduación básica es muy bajo, en comparación con otros estados cono Nuevo León o CDMX, ésto explica mucho el alto índice en jóvenes que entran a actividades delictvias de menor grado y van escalandi en actividades delictivas, además aunado a la falta de oportunidades laborales dentro del estado, hace que Michoacán de Ocampo sea uno de los estados que más personas migran hacia los Estados Unidos en busca de un empleo de calidad, lo que hace evidente la falta de oportuniades laborales y ésto hace que las actividades delictivas sean un atractivo para los jóvenes".
