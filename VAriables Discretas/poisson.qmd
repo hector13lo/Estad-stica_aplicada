@@ -1,0 +1,2052 @@
+---
+title: "Distribución Poisson"
+lang: es
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(gridExtra)
+library(patchwork)
+
+```
+
+## Introducción
+
+La distribución de Poisson es una de las distribuciones de probabilidad discretas más importantes en estadística y tiene una amplia gama de aplicaciones en diversas disciplinas. Fue desarrollada por el matemático francés Siméon Denis Poisson en 1837 como una extensión del trabajo de Abraham de Moivre sobre la distribución binomial.
+
+Esta distribución es especialmente útil para modelar el **número de eventos que ocurren en un intervalo fijo** de tiempo, espacio, volumen, o cualquier otra unidad de medida, cuando estos eventos:
+
+-   Ocurren de manera **independiente**
+-   Tienen una **tasa promedio constante**
+-   Es **raro** que ocurran múltiples eventos simultáneamente
+
+### Aplicaciones Comunes
+
+La distribución de Poisson se utiliza frecuentemente para modelar:
+
+-   **Llegadas de clientes** a un banco o restaurante por hora
+-   **Llamadas telefónicas** recibidas en un centro de atención por minuto
+-   **Defectos de fabricación** en un lote de productos
+-   **Accidentes de tráfico** en una intersección por día
+-   **Mutaciones genéticas** en una secuencia de ADN
+-   **Partículas radioactivas** detectadas por un contador Geiger
+-   **Terremotos** en una región geográfica por año
+
+La distribución de Poisson también surge como **aproximación a la distribución binomial** cuando $n$ es grande y $p$ es pequeño, manteniendo $np$ constante.
+
+## Definición
+
+::: {#def-poisson}
+Una variable aleatoria $X$ sigue una **distribución de Poisson** con parámetro $\lambda$ si cuenta el número de eventos que ocurren en un intervalo fijo, donde $\lambda$ representa la tasa promedio de ocurrencia de eventos en ese intervalo. La función de masa de probabilidad de la distribución de Poisson está dada por:
+
+$$f(x)= \frac{\lambda^x e^{-\lambda}}{x!}$$
+
+donde:
+
+-   $x = 0, 1, 2, 3, \ldots$ (número entero no negativo de eventos)
+-   $\lambda > 0$ (parámetro de tasa)
+-   $e \approx 2.71828$ (base del logaritmo natural)
+
+A una variable aleatoria que sigue esta distribución se le denota como $X \sim \text{Poisson}(\lambda)$
+:::
+
+## Características
+
+**Parámetros**
+
+La distribución de Poisson tiene un único parámetro:
+
+-   $\lambda$ (lambda): Tasa promedio de eventos por unidad de medida ($\lambda > 0$)
+
+    -   También representa tanto la media como la varianza de la distribución
+    -   Es un número real positivo
+    -   Sus unidades dependen del contexto (eventos/hora, defectos/lote, etc.)
+
+**Parámetros Estadísticos**
+
+Una característica notable de la distribución de Poisson es que su **media y varianza son iguales**:
+
+Media (Esperanza):
+
+$$E(X) = \lambda$$
+
+Varianza:
+
+$$\text{Var}(X) = \lambda$$
+
+Desviación estándar:
+
+$$\sigma = \sqrt{\lambda}$$
+
+Coeficiente de variación:
+
+$$CV = \frac{\sigma}{\mu} = \frac{\sqrt{\lambda}}{\lambda} = \frac{1}{\sqrt{\lambda}}$$
+
+**Función de Distribución (Probabilidad Acumulada)**
+
+La función de distribución acumulada (CDF) es:
+
+$$F(x) = P(X \leq x) = \sum_{i=0}^{x} \frac{\lambda^i e^{-\lambda}}{i!}$$
+
+Esta suma no tiene una forma cerrada simple, por lo que generalmente se calcula numéricamente o se consulta en tablas estadísticas.
+
+## Ejemplo Básico
+
+Un centro de atención telefónica recibe en promedio 4 llamadas por minuto. Suponiendo que las llamadas siguen un proceso de Poisson, responde las siguientes preguntas:
+
+a)  ¿Cuál es la probabilidad de recibir exactamente 6 llamadas en un minuto?
+b)  ¿Cuál es la probabilidad de no recibir ninguna llamada en un minuto?
+c)  ¿Cuál es la probabilidad de recibir 3 o menos llamadas en un minuto?
+
+**Identificación del modelo:**
+
+-   Variable: $X$ = número de llamadas por minuto
+-   Distribución: $X \sim \text{Poisson}(\lambda = 4)$
+
+```{r ejemplo-basico}
+# Parámetro
+lambda <- 4
+
+# a) P(X = 6)
+prob_6 <- dpois(6, lambda)
+cat("a) P(X = 6) =", round(prob_6, 4))
+
+# Verificación manual
+prob_6_manual <- (lambda^6 * exp(-lambda)) / factorial(6)
+cat("\n   Verificación manual:", round(prob_6_manual, 4))
+
+# b) P(X = 0)
+prob_0 <- dpois(0, lambda)
+cat("\n\nb) P(X = 0) =", round(prob_0, 4))
+
+# c) P(X ≤ 3)
+prob_3_o_menos <- ppois(3, lambda)
+cat("\n\nc) P(X ≤ 3) =", round(prob_3_o_menos, 4))
+
+# Verificación manual para c)
+prob_3_manual <- sum(dpois(0:3, lambda))
+cat("\n   Verificación manual:", round(prob_3_manual, 4))
+```
+
+**Interpretación de Resultados**
+
+```{r interpretacion-ejemplo}
+
+cat("a) La probabilidad de recibir exactamente 6 llamadas en un minuto es", 
+    round(prob_6, 6), "\n")
+
+cat("b) La probabilidad de no recibir ninguna llamada en un minuto es", 
+    round(prob_0 , 6), "\n")
+
+cat("c) La probabilidad de recibir 3 o menos llamadas en un minuto es", 
+    round(prob_3_o_menos, 6), "\n\n")
+
+# Estadísticas adicionales
+media <- lambda
+varianza <- lambda
+desv_std <- sqrt(lambda)
+
+cat("Estadísticas de la distribución:\n")
+cat("Media:", media, "llamadas por minuto\n")
+cat("Varianza:", varianza, "\n")
+cat("Desviación estándar:", round(desv_std, 2), "llamadas por minuto\n")
+```
+
+**Gráfica de la Distribución del Ejemplo**
+
+```{r grafico-ejemplo, fig.cap="Distribución de Poisson para el ejemplo (λ = 4)"}
+# Valores para graficar
+k_vals <- 0:12
+prob_vals <- dpois(k_vals, lambda)
+
+# Data frame para ggplot
+data_ejemplo <- data.frame(k = k_vals, probabilidad = prob_vals)
+
+# Resaltar los valores del ejemplo
+data_ejemplo$color <- "Normal"
+data_ejemplo$color[data_ejemplo$k == 6] <- "P(X = 6)"
+data_ejemplo$color[data_ejemplo$k == 0] <- "P(X = 0)"
+data_ejemplo$color[data_ejemplo$k <= 3] <- ifelse(data_ejemplo$color[data_ejemplo$k <= 3] == "Normal", 
+                                                 "P(X ≤ 3)", data_ejemplo$color[data_ejemplo$k <= 3])
+
+# Gráfico
+ggplot(data_ejemplo, aes(x = k, y = probabilidad, fill = color)) +
+  geom_col(alpha = 0.8, width = 0.7) +
+  labs(title = "Distribución de Poisson: Llamadas Telefónicas",
+       subtitle = "λ = 4 llamadas por minuto",
+       x = "Número de llamadas (k)",
+       y = "Probabilidad P(X = k)",
+       fill = "Casos del ejemplo") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Normal" = "#BDC3C7", 
+                              "P(X = 6)" = "#E74C3C", 
+                              "P(X = 0)" = "#3498DB",
+                              "P(X ≤ 3)" = "#2ECC71")) +
+  scale_x_continuous(breaks = k_vals) +
+  theme(legend.position = "bottom")
+```
+
+## Comparación: Efecto del Parámetro $\lambda$
+
+El parámetro $\lambda$ controla tanto la **posición central** como la **dispersión** de la distribución de Poisson.
+
+```{r efecto-lambda, fig.cap="Efecto del parámetro λ en la distribución de Poisson"}
+# Diferentes valores de lambda
+lambda_values <- c(1, 3, 5, 10)
+
+# Rango de k para cada lambda
+k_max <- max(lambda_values) + 3 * sqrt(max(lambda_values))
+k_vals <- 0:ceiling(k_max)
+
+# Crear data frame para todos los valores
+data_lambda <- expand.grid(k = k_vals, lambda = lambda_values)
+data_lambda$probabilidad <- dpois(data_lambda$k, data_lambda$lambda)
+data_lambda$lambda_label <- paste("λ =", data_lambda$lambda)
+data_lambda$lambda_label <- factor(data_lambda$lambda_label, levels = c("λ = 1", "λ = 3", "λ = 5", "λ = 10"))
+
+
+# Gráfico comparativo
+ggplot(data_lambda, aes(x = k, y = probabilidad, fill = lambda_label)) +
+  geom_col(alpha = 0.7, position = "identity") +
+  facet_wrap(~lambda_label, scales = "free") +
+  labs(title = "Efecto del Parámetro λ en la Distribución de Poisson",
+       subtitle = "A mayor λ, la distribución se desplaza hacia la derecha y se dispersa más",
+       x = "Número de eventos (k)",
+       y = "Probabilidad P(X = k)") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_brewer(type = "qual", palette = "Set1")
+```
+
+**Comparación Superpuesta**
+
+```{r comparacion-superpuesta, fig.cap="Comparación superpuesta de diferentes valores de λ"}
+# Limitar k para mejor visualización
+k_vals_plot <- 0:20
+
+# Filtrar datos
+data_plot <- data_lambda[data_lambda$k <= 20, ]
+
+# Gráfico superpuesto
+ggplot(data_plot, aes(x = k, y = probabilidad, color = lambda_label)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Comparación de Distribuciones de Poisson",
+       subtitle = "Diferentes valores del parámetro λ",
+       x = "Número de eventos (k)",
+       y = "Probabilidad P(X = k)",
+       color = "Parámetro λ") +
+  theme_minimal() +
+  scale_color_brewer(type = "qual", palette = "Set1") +
+  theme(legend.position = "bottom")
+```
+
+**Tabla Comparativa de Parámetros Estadísticos**
+
+```{r tabla-parametros}
+# Crear tabla con estadísticas para diferentes lambdas
+lambdas_tabla <- c(0.5, 1, 2, 3, 5, 8, 10, 15)
+
+tabla_stats <- data.frame(
+  Lambda = lambdas_tabla,
+  Media = lambdas_tabla,
+  Varianza = lambdas_tabla,
+  Desv_Std = sqrt(lambdas_tabla),
+  CV = 1/sqrt(lambdas_tabla),
+  P_X_eq_0 = dpois(0, lambdas_tabla)
+)
+
+
+
+kable(tabla_stats, digits = 4,
+      caption = "Parámetros estadísticos para diferentes valores de λ",
+      col.names = c("λ", "Media", "Varianza", "Desv. Std.", "CV", "P(X=0)"))
+```
+
+## Simulación de Valores Poisson y Comparación con la Teórica
+
+Consideremos una simulación con $\lambda = 3.5$ y $n = 15,000$.
+
+```{r simulacion-basica}
+# Parámetros para la simulación
+lambda <- 3.5
+n_sim <- 15000
+
+# Simulación de valores
+set.seed(42)
+valores_simulados <- rpois(n_sim, lambda)
+
+# Estadísticas de la simulación
+media_sim <- mean(valores_simulados)
+var_sim <- var(valores_simulados)
+sd_sim <- sd(valores_simulados)
+
+# Valores teóricos
+media_teorica <- lambda
+var_teorica <- lambda
+sd_teorica <- sqrt(lambda)
+
+# Tabla comparativa
+comparacion <- data.frame(
+  Estadística = c("Media", "Varianza", "Desv. Estándar"),
+  Teórica = c(media_teorica, var_teorica, sd_teorica),
+  Simulada = c(media_sim, var_sim, sd_sim),
+  Diferencia = c(abs(media_teorica - media_sim), 
+                 abs(var_teorica - var_sim), 
+                 abs(sd_teorica - sd_sim)),
+  Error_Relativo = c(abs(media_teorica - media_sim)/media_teorica * 100,
+                     abs(var_teorica - var_sim)/var_teorica * 100,
+                     abs(sd_teorica - sd_sim)/sd_teorica * 100)
+)
+
+kable(comparacion, digits = 4, 
+      caption = paste("Comparación teórica vs simulada (λ =", lambda, ", n =", format(n_sim, big.mark = ",")),
+      col.names = c("Estadística", "Teórica", "Simulada", "Diferencia", "Error Rel. (%)"))
+```
+
+**Comparación Gráfica: Simulación vs Teórica**
+
+```{r grafico-comparacion, fig.cap="Comparación entre distribución teórica y simulada de Poisson"}
+# Rango de valores para comparar
+k_max <- quantile(valores_simulados, 0.99)
+k_vals <- 0:k_max
+
+# Probabilidades teóricas
+prob_teorica <- dpois(k_vals, lambda)
+
+# Frecuencias relativas de la simulación
+freq_tabla <- table(factor(valores_simulados, levels = k_vals))
+freq_relativa <- as.numeric(freq_tabla) / n_sim
+
+# Crear data frame para ggplot
+data_comp <- data.frame(
+  k = rep(k_vals, 2),
+  Probabilidad = c(prob_teorica, freq_relativa),
+  Tipo = rep(c("Teórica", "Simulada"), each = length(k_vals))
+)
+
+# Gráfico de barras comparativo
+ggplot(data_comp, aes(x = k, y = Probabilidad, fill = Tipo)) +
+  geom_col(position = "dodge", alpha = 0.7, width = 0.8) +
+  scale_x_continuous(breaks = seq(0, k_max, by = 1)) +
+  labs(title = "Distribución de Poisson: Teórica vs Simulada",
+       subtitle = paste("λ =", lambda, ", n =", format(n_sim, big.mark = ",")),
+       x = "Número de eventos (k)",
+       y = "Probabilidad / Frecuencia relativa",
+       fill = "Distribución") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c("Teórica" = "#3498DB", "Simulada" = "#E74C3C")) 
+  
+```
+
+## Verificación de la Suma de Variables Poisson Independientes
+
+::: {#thm-suma-poisson}
+Si $X_1 \sim \text{Poisson}(\lambda_1)$ y $X_2 \sim \text{Poisson}(\lambda_2)$ son independientes, entonces:
+
+$$Y = X_1 + X_2 \sim \text{Poisson}(\lambda_1 + \lambda_2)$$
+
+**Generalización:** Si $X_1, X_2, \ldots, X_n$ son variables Poisson independientes con parámetros $\lambda_1, \lambda_2, \ldots, \lambda_n$, entonces:
+
+$$\sum_{i=1}^n X_i \sim \text{Poisson}\left(\sum_{i=1}^n \lambda_i\right)$$
+:::
+
+### Verificación por Simulación: Caso de Dos Variables
+
+```{r suma-dos-poisson}
+# Parámetros para las dos variables Poisson
+lambda1 <- 2.5
+lambda2 <- 4.2
+lambda_suma <- lambda1 + lambda2
+n_sim_suma <- 12000
+
+set.seed(123)
+
+# Método 1: Generar dos Poisson independientes y sumarlas
+X1 <- rpois(n_sim_suma, lambda1)
+X2 <- rpois(n_sim_suma, lambda2)
+suma_simulada <- X1 + X2
+
+# Método 2: Generar directamente de Poisson(λ₁ + λ₂)
+poisson_directa <- rpois(n_sim_suma, lambda_suma)
+
+# Comparar estadísticas
+stats_suma <- data.frame(
+  Método = c("X₁ + X₂ (Suma)", "Poisson Directa", "Teórico"),
+  Media = c(mean(suma_simulada), mean(poisson_directa), lambda_suma),
+  Varianza = c(var(suma_simulada), var(poisson_directa), lambda_suma),
+  Desv_Std = c(sd(suma_simulada), sd(poisson_directa), sqrt(lambda_suma)),
+  Min = c(min(suma_simulada), min(poisson_directa), 0),
+  Max = c(max(suma_simulada), max(poisson_directa), NA)
+)
+
+kable(stats_suma, digits = 4,
+      caption = paste("Verificación suma de Poisson (λ₁ =", lambda1, ", λ₂ =", lambda2, ")"))
+
+# Información adicional
+cat("\nPARÁMETROS INDIVIDUALES:\n")
+cat("========================\n")
+cat("X₁ ~ Poisson(", lambda1, "): E(X₁) =", lambda1, ", Var(X₁) =", lambda1, "\n")
+cat("X₂ ~ Poisson(", lambda2, "): E(X₂) =", lambda2, ", Var(X₂) =", lambda2, "\n\n")
+
+cat("SUMA TEÓRICA:\n")
+cat("=============\n")
+cat("Y = X₁ + X₂ ~ Poisson(", lambda_suma, ")\n")
+cat("E[Y] = E(X₁) + E(X₂) =", lambda_suma, "\n")
+cat("Var(Y) = Var(X₁) + Var(X₂) =", lambda_suma, " (por independencia)\n")
+```
+
+**Comparación Visual de las Distribuciones**
+
+```{r comparacion-visual-suma, fig.cap="Comparación visual: Suma de Poisson vs Poisson directa"}
+# Crear data frame para comparación
+data_suma_comp <- data.frame(
+  valores = c(suma_simulada, poisson_directa),
+  metodo = rep(c("X1 + X2", "Poisson(λ1+λ2)"), each = n_sim_suma)
+)
+
+# Histogramas superpuestos
+ggplot(data_suma_comp, aes(x = valores, fill = metodo)) +
+  geom_histogram(alpha = 0.6, binwidth = 1, position = "dodge2", center =0) +
+  scale_x_continuous(breaks = seq(0, max(c(suma_simulada, poisson_directa)), by = 1)) +
+  labs(title = "Verificación de la Propiedad Aditiva de Poisson",
+       subtitle = paste("λ1 =", lambda1, ", λ2 =", lambda2, ", λ1+λ2 =", lambda_suma),
+       x = "Número de eventos",
+       y = "Frecuencia",
+       fill = "Método") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c("X1 + X2" = "#3498DB", "Poisson(λ1+λ2)" = "#E74C3C"))
+```
+
+### Verificación con Múltiples Variables
+
+```{r suma-multiples, fig.cap="Verificación con suma de múltiples variables Poisson"}
+# Suma de 4 variables Poisson independientes
+lambdas <- c(1.5, 2.0, 2.5, 3.0)
+lambda_total <- sum(lambdas)
+n_vars <- length(lambdas)
+
+# Generar las variables individuales
+variables_poisson <- matrix(0, nrow = n_sim_suma, ncol = n_vars)
+for(i in 1:n_vars) {
+  variables_poisson[, i] <- rpois(n_sim_suma, lambdas[i])
+}
+
+# Suma de las 4 variables
+suma_multiple <- rowSums(variables_poisson)
+
+# Poisson directa con λ total
+poisson_multiple_directa <- rpois(n_sim_suma, lambda_total)
+
+# Estadísticas comparativas
+cat("VERIFICACIÓN CON", n_vars, "VARIABLES POISSON\n")
+cat("λ₁ =", lambdas[1], ", λ₂ =", lambdas[2], ", λ₃ =", lambdas[3], ", λ₄ =", lambdas[4], "\n")
+cat("λ_total =", lambda_total, "\n\n")
+
+stats_multiple <- data.frame(
+  Distribución = c("Suma de 4 Poisson", "Poisson(λ_total)", "Diferencia"),
+  Media = c(mean(suma_multiple), mean(poisson_multiple_directa), 
+            abs(mean(suma_multiple) - mean(poisson_multiple_directa))),
+  Varianza = c(var(suma_multiple), var(poisson_multiple_directa),
+               abs(var(suma_multiple) - var(poisson_multiple_directa)))
+)
+
+kable(stats_multiple, digits = 4, 
+      caption = "Estadísticas para suma de múltiples variables Poisson")
+
+# Visualización
+data_multiple <- data.frame(
+  valores = c(suma_multiple, poisson_multiple_directa),
+  tipo = rep(c("Suma de 4 Poisson", "Poisson(λ_total)"), each = n_sim_suma)
+)
+
+ggplot(data_multiple, aes(x = valores, fill = tipo)) +
+  geom_histogram(alpha = 0.6, binwidth = 1, center=0, position = "dodge2") +
+  scale_x_continuous(breaks = seq(0, max(c(suma_multiple, poisson_multiple_directa)), by = 1)) +
+  labs(title = "Suma de Múltiples Variables Poisson",
+       subtitle = paste("λ_total =", lambda_total),
+       x = "Número de eventos",
+       y = "Frecuencia",
+       fill = "Tipo") +
+  theme_minimal() +
+  scale_fill_manual(values = c("#2ECC71", "#F39C12"))
+```
+
+## Teorema Central del Límite con Variables Poisson
+
+**Configuración del Experimento**
+
+Consideremos una variable aleatoria $X \sim \text{Poisson}(\lambda = 3)$. Vamos a generar múltiples muestras de diferentes tamaños y observar cómo se comporta la distribución de la media muestral $\bar{X}$.
+
+**Teoría esperada:** 
+
+- Para muestras de tamaño $n$ de $X \sim \text{Poisson}(\lambda)$ 
+- $\bar{X} \sim N\left(\lambda, \frac{\lambda}{n}\right)$ cuando $n$ es grande 
+- $E(\bar{X}) = \lambda$ y $\text{Var}(\bar{X}) = \frac{\lambda}{n}$
+
+```{r configuracion-tcl}
+# Parámetros del experimento
+lambda_tcl <- 3
+tamaños_muestra <- c(5, 10, 25, 50, 100)
+num_muestras <- 2000
+
+cat("CONFIGURACIÓN DEL EXPERIMENTO\n")
+cat("=============================\n")
+cat("Distribución original: Poisson(λ =", lambda_tcl, ")\n")
+cat("Tamaños de muestra:", paste(tamaños_muestra, collapse = ", "), "\n")
+cat("Número de muestras por tamaño:", num_muestras, "\n\n")
+
+cat("Parámetros teóricos de la distribución original:\n")
+cat("E[X] =", lambda_tcl, "\n")
+cat("Var(X) =", lambda_tcl, "\n")
+cat("SD(X) =", round(sqrt(lambda_tcl), 3), "\n")
+```
+
+**Generación de Muestras y Cálculo de Medias**
+
+```{r generacion-muestras}
+# Función para generar medias muestrales
+generar_medias_muestrales <- function(n, num_muestras, lambda) {
+  medias <- numeric(num_muestras)
+  for(i in 1:num_muestras) {
+    muestra <- rpois(n, lambda)
+    medias[i] <- mean(muestra)
+  }
+  return(medias)
+}
+
+# Generar medias para cada tamaño de muestra
+set.seed(123)
+medias_muestrales <- list()
+
+for(i in seq_along(tamaños_muestra)) {
+  n <- tamaños_muestra[i]
+  medias_muestrales[[i]] <- generar_medias_muestrales(n, num_muestras, lambda_tcl)
+  names(medias_muestrales)[i] <- paste("n", n, sep = "_")
+}
+
+# Crear data frame para análisis
+data_tcl <- do.call(rbind, lapply(seq_along(medias_muestrales), function(i) {
+  data.frame(
+    media_muestral = medias_muestrales[[i]],
+    n = tamaños_muestra[i],
+    n_label = paste("n =", tamaños_muestra[i])
+  )
+}))
+
+data_tcl$n_label <- factor(data_tcl$n_label, levels = c("n = 5", "n = 10", "n = 25", "n = 50", "n = 100"))
+
+cat("Muestras generadas exitosamente.\n")
+cat("Total de observaciones:", nrow(data_tcl), "\n")
+```
+
+**Verificación de Convergencia de Media y Varianza**
+
+```{r verificacion-convergencia}
+# Calcular estadísticas para cada tamaño de muestra
+estadisticas_tcl <- data.frame(
+  n = tamaños_muestra,
+  Media_Observada = sapply(medias_muestrales, mean),
+  Media_Teorica = rep(lambda_tcl, length(tamaños_muestra)),
+  Var_Observada = sapply(medias_muestrales, var),
+  Var_Teorica = lambda_tcl / tamaños_muestra,
+  SD_Observada = sapply(medias_muestrales, sd),
+  SD_Teorica = sqrt(lambda_tcl / tamaños_muestra)
+)
+
+# Calcular errores
+
+estadisticas_tcl <- estadisticas_tcl |> mutate(
+  Error_Media = abs(Media_Observada - Media_Teorica),
+  Error_Var = abs(Var_Observada - Var_Teorica),
+  Error_SD = abs(SD_Observada - SD_Teorica))
+
+kable(estadisticas_tcl, digits = 4,
+      caption = "Convergencia de estadísticos de la media muestral",
+      col.names = c("n", "Media Obs.", "Media Teór.", "Var. Obs.", "Var. Teór.", 
+                   "SD Obs.", "SD Teór.", "Error Media", "Error Var.", "Error SD"))
+
+```
+
+**Visualización de la Convergencia**
+
+```{r visualizacion-convergencia, fig.cap="Distribución de medias muestrales para diferentes tamaños de muestra"}
+# Histogramas de las medias muestrales
+ggplot(data_tcl, aes(x = media_muestral)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30, alpha = 0.7, fill = "#3498DB") +
+  geom_vline(xintercept = lambda_tcl, color = "#E74C3C", linetype = "dashed", linewidth = 1) +
+  facet_wrap(~n_label, scales = "free_y") +
+  labs(title = "Distribución de Medias Muestrales (TCL)",
+       subtitle = paste("Distribución original: Poisson(λ =", lambda_tcl, "). Línea roja: media teórica"),
+       x = "Media muestral",
+       y = "Densidad") +
+  theme_minimal()
+```
+
+```{r comparacion-con-normal, fig.cap="Comparación con distribución normal teórica"}
+# Agregar curvas normales específicas para cada panel
+data_tcl_split <- split(data_tcl, data_tcl$n_label)
+
+plots_comparacion <- lapply(names(data_tcl_split), function(label) {
+  datos <- data_tcl_split[[label]]
+  n_val <- unique(datos$n)
+  
+  ggplot(datos, aes(x = media_muestral)) +
+    geom_histogram(aes(y = after_stat(density)), bins = 25, alpha = 0.6, fill = "#3498DB") +
+    stat_function(fun = dnorm, 
+                  args = list(mean = lambda_tcl, sd = sqrt(lambda_tcl/n_val)), 
+                  color = "#E74C3C", linewidth = 1.2) +
+    ggtitle(label) +
+    xlab("Media muestral") +
+    ylab("Densidad") +
+    theme_minimal()
+})
+
+# Combinar gráficos
+do.call(grid.arrange, c(plots_comparacion, ncol = 3))
+```
+
+## Aplicaciones de la Distribución de Poisson
+
+### Gestión de Tráfico de Red
+
+**Contexto:** Una empresa de telecomunicaciones monitorea el tráfico de datos en sus servidores. El número de paquetes de datos que llegan por segundo sigue una distribución de Poisson.
+
+```{r aplicacion-trafico}
+# Parámetros del problema
+lambda_trafico <- 8.5  # 8.5 paquetes por segundo en promedio
+
+cat("APLICACIÓN 1: TRÁFICO DE RED\n")
+cat("============================\n")
+cat("Parámetro: λ =", lambda_trafico, "paquetes por segundo\n\n")
+
+# Preguntas típicas
+cat("ANÁLISIS DEL TRÁFICO:\n")
+
+# 1. Probabilidad de recibir exactamente 10 paquetes en un segundo
+prob_10 <- dpois(10, lambda_trafico)
+cat("1. P(X = 10 paquetes) =", round(prob_10, 4), "(", round(prob_10*100, 2), "%)\n")
+
+# 2. Probabilidad de recibir más de 12 paquetes
+prob_mas_12 <- 1 - ppois(12, lambda_trafico)
+cat("2. P(X > 12 paquetes) =", round(prob_mas_12, 4), "(", round(prob_mas_12*100, 2), "%)\n")
+
+# 3. Número esperado de paquetes en 5 segundos
+# En 5 segundos: Y ~ Poisson(5λ)
+lambda_5seg <- 5 * lambda_trafico
+paquetes_5seg_esperados <- lambda_5seg
+cat("3. Paquetes esperados en 5 segundos =", paquetes_5seg_esperados, "\n")
+
+# 4. Probabilidad de sobrecarga (más de 15 paquetes por segundo)
+prob_sobrecarga <- 1 - ppois(15, lambda_trafico)
+cat("4. P(Sobrecarga) = P(X > 15) =", round(prob_sobrecarga, 4), "\n")
+
+# Simulación para verificar
+set.seed(456)
+n_sim_trafico <- 10000
+sim_paquetes <- rpois(n_sim_trafico, lambda_trafico)
+
+cat("\nVERIFICACIÓN POR SIMULACIÓN (n =", format(n_sim_trafico, big.mark = ","), "):\n")
+cat("Media simulada:", round(mean(sim_paquetes), 3), "(teórica:", lambda_trafico, ")\n")
+cat("P(X = 10) simulada:", round(mean(sim_paquetes == 10), 4), "(teórica:", round(prob_10, 4), ")\n")
+cat("P(X > 15) simulada:", round(mean(sim_paquetes > 15), 4), "(teórica:", round(prob_sobrecarga, 4), ")\n")
+```
+
+```{r grafico-trafico, fig.cap="Distribución del tráfico de red y zonas críticas"}
+# Visualización del problema de tráfico
+k_trafico <- 0:20
+prob_trafico <- dpois(k_trafico, lambda_trafico)
+
+data_trafico <- data.frame(
+  paquetes = k_trafico,
+  probabilidad = prob_trafico
+)
+
+# Definir zonas
+data_trafico$zona <- case_when(
+  data_trafico$paquetes <= 5 ~ "Bajo",
+  data_trafico$paquetes <= 12 ~ "Normal", 
+  data_trafico$paquetes <= 15 ~ "Alto",
+  TRUE ~ "Sobrecarga"
+)
+
+ggplot(data_trafico, aes(x = paquetes, y = probabilidad, fill = zona)) +
+  geom_col(alpha = 0.8) +
+  labs(title = "Distribución del Tráfico de Red por Segundo",
+       subtitle = paste("λ =", lambda_trafico, "paquetes/segundo"),
+       x = "Número de paquetes",
+       y = "Probabilidad",
+       fill = "Zona de tráfico") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Bajo" = "#2ECC71", "Normal" = "#3498DB", 
+                              "Alto" = "#F39C12", "Sobrecarga" = "#E74C3C"))
+```
+
+### Control de Calidad Industrial
+
+**Contexto:** Una fábrica de semiconductores monitorea defectos en sus productos. El número de defectos por lote sigue una distribución de Poisson.
+
+```{r aplicacion-calidad}
+# Parámetros del control de calidad
+lambda_defectos <- 2.3  # 2.3 defectos por lote en promedio
+
+cat("APLICACIÓN 2: CONTROL DE CALIDAD\n")
+cat("================================\n")
+cat("Parámetro: λ =", lambda_defectos, "defectos por lote\n\n")
+
+# Análisis de calidad
+cat("ANÁLISIS DE CONTROL DE CALIDAD:\n")
+
+# 1. Probabilidad de lote perfecto (0 defectos)
+prob_perfecto <- dpois(0, lambda_defectos)
+cat("1. P(Lote perfecto) = P(X = 0) =", round(prob_perfecto, 4), "(", round(prob_perfecto*100, 1), "%)\n")
+
+# 2. Probabilidad de lote aceptable (≤ 3 defectos)
+prob_aceptable <- ppois(3, lambda_defectos)
+cat("2. P(Lote aceptable) = P(X ≤ 3) =", round(prob_aceptable, 4), "(", round(prob_aceptable*100, 1), "%)\n")
+
+# 3. Probabilidad de rechazo (> 5 defectos)
+prob_rechazo <- 1 - ppois(5, lambda_defectos)
+cat("3. P(Rechazo) = P(X > 5) =", round(prob_rechazo, 4), "(", round(prob_rechazo*100, 1), "%)\n")
+
+# 4. Análisis económico
+costo_defecto <- 50  # $50 por defecto
+defectos_esperados <- lambda_defectos
+costo_esperado_lote <- defectos_esperados * costo_defecto
+cat("4. Costo esperado por defectos por lote: $", costo_esperado_lote, "\n")
+
+# 5. Análisis de múltiples lotes
+n_lotes <- 100
+lambda_total <- n_lotes * lambda_defectos
+cat("5. Defectos esperados en", n_lotes, "lotes:", lambda_total, "\n")
+
+```
+
+```{r simulacion-calidad, fig.cap="Simulación del proceso de control de calidad"}
+# Simulación del proceso de control de calidad
+set.seed(789)
+n_lotes_sim <- 1000
+lotes_simulados <- rpois(n_lotes_sim, lambda_defectos)
+
+# Clasificar lotes
+clasificacion <- case_when(
+  lotes_simulados == 0 ~ "Perfecto",
+  lotes_simulados <= 3 ~ "Aceptable",
+  lotes_simulados <= 5 ~ "Revisión",
+  TRUE ~ "Rechazo"
+)
+
+# Crear data frame para visualización
+data_calidad <- data.frame(
+  defectos = lotes_simulados,
+  clasificacion = factor(clasificacion, 
+                        levels = c("Perfecto", "Aceptable", "Revisión", "Rechazo"))
+)
+
+# Gráfico de la simulación
+ggplot(data_calidad, aes(x = defectos, fill = clasificacion)) +
+  geom_histogram(bins = 15, alpha = 0.8, position = "stack") +
+  labs(title = "Simulación de Control de Calidad",
+       subtitle = paste("n =", format(n_lotes_sim, big.mark = ","), "lotes simulados"),
+       x = "Número de defectos por lote",
+       y = "Frecuencia",
+       fill = "Clasificación") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Perfecto" = "#2ECC71", "Aceptable" = "#3498DB",
+                              "Revisión" = "#F39C12", "Rechazo" = "#E74C3C"))
+
+# Tabla de resultados de la simulación
+tabla_clasificacion <- table(clasificacion)
+prop_clasificacion <- prop.table(tabla_clasificacion)
+
+cat("\nRESULTADOS DE LA SIMULACIÓN:\n")
+cat("============================\n")
+for(i in 1:length(tabla_clasificacion)) {
+  cat(names(tabla_clasificacion)[i], ":", tabla_clasificacion[i], 
+      "lotes (", round(prop_clasificacion[i]*100, 1), "%)\n")
+}
+```
+
+### Epidemiología y Salud Pública
+
+**Contexto:** Un epidemiólogo estudia la incidencia de una enfermedad rara en una población. Los nuevos casos por semana siguen una distribución de Poisson.
+
+```{r aplicacion-epidemiologia}
+# Parámetros epidemiológicos
+lambda_casos <- 4.2  # 4.2 casos nuevos por semana en promedio
+
+cat("APLICACIÓN 3: EPIDEMIOLOGÍA\n")
+cat("===========================\n")
+cat("Parámetro: λ =", lambda_casos, "casos nuevos por semana\n\n")
+
+cat("ANÁLISIS EPIDEMIOLÓGICO:\n")
+
+# 1. Probabilidad de semana sin casos nuevos
+prob_sin_casos <- dpois(0, lambda_casos)
+cat("1. P(Semana sin casos) =", round(prob_sin_casos, 4), "(", round(prob_sin_casos*100, 1), "%)\n")
+
+# 2. Probabilidad de brote (más de 8 casos)
+prob_brote <- 1 - ppois(8, lambda_casos)
+cat("2. P(Brote) = P(X > 8) =", round(prob_brote, 4), "(", round(prob_brote*100, 1), "%)\n")
+
+# 3. Casos esperados en un mes (4 semanas)
+casos_mes <- 4 * lambda_casos
+cat("3. Casos esperados en un mes:", casos_mes, "\n")
+
+# 4. Análisis de intervención
+# Si una intervención reduce λ en 30%
+lambda_intervencion <- lambda_casos * 0.7
+reduccion_casos_mes <- (lambda_casos - lambda_intervencion) * 4
+cat("4. Con intervención (reducción 30%):\n")
+cat("   Nuevos casos esperados por semana:", lambda_intervencion, "\n")
+cat("   Reducción esperada por mes:", reduccion_casos_mes, "casos\n")
+
+# 5. Monitoreo de alertas
+umbral_alerta <- 7
+prob_alerta <- 1 - ppois(umbral_alerta - 1, lambda_casos)
+cat("5. P(Alerta) = P(X ≥", umbral_alerta, ") =", round(prob_alerta, 4), "\n")
+```
+
+```{r visualizacion-epidemiologia, fig.cap="Análisis epidemiológico con y sin intervención"}
+# Comparación antes y después de intervención
+k_epi <- 0:15
+prob_antes <- dpois(k_epi, lambda_casos)
+prob_despues <- dpois(k_epi, lambda_intervencion)
+
+data_epi <- data.frame(
+  casos = rep(k_epi, 2),
+  probabilidad = c(prob_antes, prob_despues),
+  escenario = rep(c("Sin intervención", "Con intervención"), each = length(k_epi))
+)
+
+ggplot(data_epi, aes(x = casos, y = probabilidad, fill = escenario)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_vline(xintercept = umbral_alerta - 0.5, linetype = "dashed", color = "red") +
+  labs(title = "Impacto de Intervención en Salud Pública",
+       subtitle = paste("Reducción del 30% en la incidencia (λ:", lambda_casos, "→", lambda_intervencion, ")"),
+       x = "Número de casos nuevos por semana",
+       y = "Probabilidad",
+       fill = "Escenario",
+       caption = "Línea roja: umbral de alerta") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Sin intervención" = "#E74C3C", "Con intervención" = "#2ECC71"))
+```
+
+## Ejercicios Propuestos
+
+::: {#exr-centro-atencion}
+Un centro de atención telefónica recibe llamadas siguiendo una distribución de Poisson con una tasa promedio de 6 llamadas por minuto.
+```{r}
+set.seed(123)
+
+
+lambda_minuto <- 6  
+n_sim <- 10000      
+
+
+
+cat("Parámetro: λ =", lambda_minuto, "llamadas por minuto\n\n")
+
+
+prob_4_llamadas <- dpois(4, lambda_minuto)
+cat("a) PROBABILIDAD DE EXACTAMENTE 4 LLAMADAS EN UN MINUTO:\n")
+cat("   P(X = 4) =", round(prob_4_llamadas, 4), "(", round(prob_4_llamadas*100, 2), "%)\n")
+
+
+llamadas_por_minuto <- rpois(n_sim, lambda_minuto)
+prob_sim_4 <- mean(llamadas_por_minuto == 4)
+cat("   Simulación: P(X = 4) ≈", round(prob_sim_4, 4), "(", round(prob_sim_4*100, 2), "%)\n")
+cat("   Diferencia:", round(abs(prob_4_llamadas - prob_sim_4), 6), "\n\n")
+
+
+lambda_30seg <- lambda_minuto / 2  # Para 30 segundos: λ = 3
+prob_0_30seg <- dpois(0, lambda_30seg)
+cat("b) PROBABILIDAD DE CERO LLAMADAS EN 30 SEGUNDOS:\n")
+cat("   λ para 30 segundos =", lambda_30seg, "\n")
+cat("   P(X = 0) =", round(prob_0_30seg, 4), "(", round(prob_0_30seg*100, 2), "%)\n")
+
+
+llamadas_30seg <- rpois(n_sim, lambda_30seg)
+prob_sim_0 <- mean(llamadas_30seg == 0)
+cat("   Simulación: P(X = 0) ≈", round(prob_sim_0, 4), "(", round(prob_sim_0*100, 2), "%)\n")
+cat("   Diferencia:", round(abs(prob_0_30seg - prob_sim_0), 6), "\n\n")
+
+
+lambda_hora <- lambda_minuto * 60  # Para una hora: λ = 360
+cat("c) NÚMERO ESPERADO DE LLAMADAS EN UNA HORA:\n")
+cat("   λ para 1 hora =", lambda_minuto, "× 60 =", lambda_hora, "\n")
+cat("   E[X] =", lambda_hora, "llamadas por hora\n")
+
+
+llamadas_por_hora <- rpois(n_sim, lambda_hora)
+media_sim_hora <- mean(llamadas_por_hora)
+cat("   Simulación: E[X] ≈", round(media_sim_hora, 2), "llamadas por hora\n")
+cat("   Diferencia:", round(abs(lambda_hora - media_sim_hora), 4), "\n\n")
+
+
+lambda_2min <- lambda_minuto * 2  # Para dos minutos: λ = 12
+prob_8_a_12 <- ppois(12, lambda_2min) - ppois(7, lambda_2min)
+cat("d) PROBABILIDAD ENTRE 8 Y 12 LLAMADAS EN 2 MINUTOS:\n")
+cat("   λ para 2 minutos =", lambda_minuto, "× 2 =", lambda_2min, "\n")
+cat("   P(8 ≤ X ≤ 12) =", round(prob_8_a_12, 4), "(", round(prob_8_a_12*100, 2), "%)\n")
+
+
+llamadas_2min <- rpois(n_sim, lambda_2min)
+prob_sim_8_12 <- mean(llamadas_2min >= 8 & llamadas_2min <= 12)
+cat("   Simulación: P(8 ≤ X ≤ 12) ≈", round(prob_sim_8_12, 4), "(", round(prob_sim_8_12*100, 2), "%)\n")
+cat("   Diferencia:", round(abs(prob_8_a_12 - prob_sim_8_12), 6), "\n\n")
+
+
+
+
+
+k_llamadas <- 0:15
+prob_poisson <- dpois(k_llamadas, lambda_minuto)
+prob_acumulada <- ppois(k_llamadas, lambda_minuto)
+
+
+poisson_llamadas <- data.frame(
+    Llamadas = k_llamadas,
+    Probabilidad = round(prob_poisson, 4),
+    Prob_Acumulada = round(prob_acumulada, 4)
+)
+
+
+kable(poisson_llamadas,
+    caption = "Distribución de Poisson - Llamadas por minuto (λ = 6)",
+    col.names = c("Llamadas (k)", "P(X = k)", "P(X ≤ k)")) %>%
+  kable_styling(bootstrap_options = "striped")
+
+
+
+
+
+prob_mas_10 <- 1 - ppois(10, lambda_minuto)
+cat("• P(X > 10 llamadas en 1 minuto) =", round(prob_mas_10, 4), "(", round(prob_mas_10*100, 2), "%)\n")
+
+
+prob_al_menos_5 <- 1 - ppois(4, lambda_minuto)
+cat("• P(X ≥ 5 llamadas en 1 minuto) =", round(prob_al_menos_5, 4), "(", round(prob_al_menos_5*100, 2), "%)\n")
+
+
+varianza_teorica <- lambda_minuto
+cat("• Varianza teórica: Var[X] = λ =", varianza_teorica, "\n")
+
+varianza_sim <- var(llamadas_por_minuto)
+cat("• Varianza simulada:", round(varianza_sim, 4), "\n")
+
+
+
+
+df_grafico <- data.frame(
+    Llamadas = 0:15,
+    Probabilidad = dpois(0:15, lambda_minuto)
+)
+
+grafico <- ggplot(df_grafico, aes(x = Llamadas, y = Probabilidad)) +
+    geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7, width = 0.7) +
+    geom_text(aes(label = round(Probabilidad, 3)), vjust = -0.3, size = 3) +
+    labs(title = "Distribución de Poisson - Llamadas por minuto",
+         subtitle = paste("Centro de atención (λ =", lambda_minuto, "llamadas/minuto)"),
+         x = "Número de llamadas",
+         y = "Probabilidad") +
+    theme_minimal() +
+    scale_x_continuous(breaks = 0:15) +
+    ylim(0, max(df_grafico$Probabilidad) * 1.1)
+
+print(grafico)
+
+
+
+```
+
+
+**Preguntas:**
+
+a)  ¿Cuál es la probabilidad de recibir exactamente 4 llamadas en un minuto?
+
+b)  ¿Cuál es la probabilidad de no recibir ninguna llamada en 30 segundos?
+
+c)  ¿Cuál es el número esperado de llamadas en una hora?
+
+d)  ¿Cuál es la probabilidad de recibir entre 8 y 12 llamadas (inclusive) en dos minutos?
+:::
+
+::: {#exr-linea_prod}
+Una línea de producción tiene en promedio 1.5 defectos por cada 100 productos fabricados.
+```{r}
+lambda_base <- 1.5 
+n_sim <- 10000
+
+
+lambda_500 <- lambda_base * 5  
+prob_8_defectos <- dpois(8, lambda_500)
+
+
+defectos_500 <- rpois(n_sim, lambda_500)
+prob_sim_8 <- mean(defectos_500 == 8)
+
+
+prob_10_mas <- 1 - ppois(9, lambda_500)
+
+
+prob_sim_10_mas <- mean(defectos_500 >= 10)
+
+
+lambda_objetivo <- -log(0.05)
+
+productos_necesarios <- (lambda_objetivo / lambda_base) * 100
+
+
+lambda_mejorado <- 1.2  
+lambda_500_mejorado <- lambda_mejorado * 5  
+prob_10_mas_mejorado <- 1 - ppois(9, lambda_500_mejorado)
+
+
+defectos_500_mejorado <- rpois(n_sim, lambda_500_mejorado)
+prob_sim_10_mas_mejorado <- mean(defectos_500_mejorado >= 10)
+
+
+
+print(paste("Parámetro base: λ =", lambda_base, "defectos por 100 productos"))
+print(paste("Simulaciones: n =", n_sim))
+print("")
+
+print("a) PROBABILIDAD DE EXACTAMENTE 8 DEFECTOS EN 500 PRODUCTOS:")
+print(paste("   λ para 500 productos =", lambda_base, "× 5 =", lambda_500))
+print(paste("   P(X = 8) =", round(prob_8_defectos, 4), "(", round(prob_8_defectos*100, 2), "%)"))
+print(paste("   Simulación: P(X = 8) ≈", round(prob_sim_8, 4), "(", round(prob_sim_8*100, 2), "%)"))
+print("")
+
+print("b) PROBABILIDAD DE 10 O MÁS DEFECTOS EN 500 PRODUCTOS:")
+print(paste("   P(X ≥ 10) =", round(prob_10_mas, 4), "(", round(prob_10_mas*100, 2), "%)"))
+print(paste("   Simulación: P(X ≥ 10) ≈", round(prob_sim_10_mas, 4), "(", round(prob_sim_10_mas*100, 2), "%)"))
+print("")
+
+print("c) PRODUCTOS PARA P(AL MENOS 1 DEFECTO) = 0.95:")
+print(paste("   λ necesario = -ln(0.05) =", round(lambda_objetivo, 4)))
+print(paste("   Productos necesarios = (", round(lambda_objetivo, 4), "/", lambda_base, ") × 100"))
+print(paste("   Resultado:", round(productos_necesarios, 1), "productos"))
+print("")
+
+print("d) MEJORA DEL PROCESO (1.2 defectos/100 productos):")
+print(paste("   Nuevo λ para 500 productos =", lambda_mejorado, "× 5 =", lambda_500_mejorado))
+print(paste("   Nueva P(X ≥ 10) =", round(prob_10_mas_mejorado, 4), "(", round(prob_10_mas_mejorado*100, 2), "%)"))
+print(paste("   Simulación nueva P(X ≥ 10) ≈", round(prob_sim_10_mas_mejorado, 4), "(", round(prob_sim_10_mas_mejorado*100, 2), "%)"))
+print("")
+
+
+k_defectos <- 0:15
+prob_original <- dpois(k_defectos, lambda_500)
+prob_mejorado <- dpois(k_defectos, lambda_500_mejorado)
+
+tabla_comparativa <- data.frame(
+  Defectos = k_defectos,
+  Prob_Original = round(prob_original, 4),
+  Prob_Mejorado = round(prob_mejorado, 4)
+)
+
+print("TABLA COMPARATIVA: DISTRIBUCIÓN PARA 500 PRODUCTOS")
+print(kable(tabla_comparativa,
+    caption = "Comparación: Proceso original vs mejorado",
+    col.names = c("Defectos", "Original (λ=7.5)", "Mejorado (λ=6.0)")) %>%
+  kable_styling(bootstrap_options = "striped"))
+
+
+df_grafico <- data.frame(
+  Defectos = rep(k_defectos, 2),
+  Probabilidad = c(prob_original, prob_mejorado),
+  Proceso = rep(c("Original (λ=7.5)", "Mejorado (λ=6.0)"), each = length(k_defectos))
+)
+
+grafico <- ggplot(df_grafico, aes(x = Defectos, y = Probabilidad, fill = Proceso)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Distribución de Defectos en 500 Productos",
+       subtitle = "Comparación entre proceso original y mejorado",
+       x = "Número de defectos",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Original (λ=7.5)" = "#E74C3C", "Mejorado (λ=6.0)" = "#3498DB")) +
+  scale_x_continuous(breaks = k_defectos) +
+  theme(legend.position = "top")
+
+print(grafico)
+
+
+print("ANÁLISIS ADICIONAL:")
+print(paste("• Media original (500 productos):", lambda_500, "defectos"))
+print(paste("• Media mejorada (500 productos):", lambda_500_mejorado, "defectos"))
+print(paste("• Reducción porcentual en defectos:", round((1 - lambda_mejorado/lambda_base)*100, 1), "%"))
+
+
+lambda_verificacion <- (productos_necesarios / 100) * lambda_base
+prob_verificacion <- 1 - ppois(0, lambda_verificacion)
+print(paste("• Verificación P(≥1 defecto) con", round(productos_necesarios, 0), "productos:", round(prob_verificacion, 4)))
+```
+
+
+**Preguntas:**
+
+a)  Si se fabrican 500 productos, ¿cuál es la probabilidad de tener exactamente 8 defectos?
+
+b)  ¿Cuál es la probabilidad de tener 10 o más defectos en 500 productos?
+
+c)  ¿Cuántos productos se deben fabricar para que la probabilidad de tener al menos un defecto sea de 0.95?
+
+d)  Si la empresa mejora el proceso y reduce los defectos a 1.2 por cada 100 productos, ¿cuál sería la nueva probabilidad de tener 10 o más defectos en 500 productos?
+:::
+
+::: {#exr-hospital}
+El servicio de urgencias de un hospital recibe pacientes según un proceso de Poisson con una tasa promedio de 2.5 pacientes por hora durante la noche.
+```{r}
+lambda_hora <- 2.5  
+n_sim <- 10000     
+
+
+prob_3_pacientes <- dpois(3, lambda_hora)
+
+
+pacientes_por_hora <- rpois(n_sim, lambda_hora)
+prob_sim_3 <- mean(pacientes_por_hora == 3)
+
+
+lambda_2horas <- lambda_hora * 2
+prob_0_2horas <- dpois(0, lambda_2horas)
+
+
+pacientes_2horas <- rpois(n_sim, lambda_2horas)
+prob_sim_0 <- mean(pacientes_2horas == 0)
+
+
+lambda_4horas <- lambda_hora * 4
+capacidad_actual <- 8
+prob_superar_capacidad <- 1 - ppois(capacidad_actual, lambda_4horas)
+
+
+pacientes_4horas <- rpois(n_sim, lambda_4horas)
+prob_sim_superar <- mean(pacientes_4horas > capacidad_actual)
+
+
+prob_objetivo <- 0.10
+
+capacidad_minima <- qpois(1 - prob_objetivo, lambda_4horas)
+
+
+prob_verificacion <- 1 - ppois(capacidad_minima, lambda_4horas)
+
+
+
+print(paste("Parámetro: λ =", lambda_hora, "pacientes por hora"))
+print(paste("Simulaciones: n =", n_sim))
+print("")
+
+print("a) PROBABILIDAD DE EXACTAMENTE 3 PACIENTES EN 1 HORA:")
+print(paste("   P(X = 3) =", round(prob_3_pacientes, 4), "(", round(prob_3_pacientes*100, 2), "%)"))
+print(paste("   Simulación: P(X = 3) ≈", round(prob_sim_3, 4), "(", round(prob_sim_3*100, 2), "%)"))
+print("")
+
+print("b) PROBABILIDAD DE CERO PACIENTES EN 2 HORAS:")
+print(paste("   λ para 2 horas =", lambda_hora, "× 2 =", lambda_2horas))
+print(paste("   P(X = 0) =", round(prob_0_2horas, 4), "(", round(prob_0_2horas*100, 2), "%)"))
+print(paste("   Simulación: P(X = 0) ≈", round(prob_sim_0, 4), "(", round(prob_sim_0*100, 2), "%)"))
+print("")
+
+print("c) PROBABILIDAD DE SUPERAR CAPACIDAD EN TURNO DE 4 HORAS:")
+print(paste("   λ para 4 horas =", lambda_hora, "× 4 =", lambda_4horas))
+print(paste("   Capacidad actual:", capacidad_actual, "pacientes"))
+print(paste("   P(X >", capacidad_actual, ") =", round(prob_superar_capacidad, 4), "(", round(prob_superar_capacidad*100, 2), "%)"))
+print(paste("   Simulación: P(X >", capacidad_actual, ") ≈", round(prob_sim_superar, 4), "(", round(prob_sim_superar*100, 2), "%)"))
+print("")
+
+print("d) CAPACIDAD MÍNIMA PARA P(SATURACIÓN) < 10%:")
+print(paste("   Probabilidad objetivo: P(saturación) <", prob_objetivo))
+print(paste("   Capacidad mínima requerida:", capacidad_minima, "pacientes"))
+print(paste("   Verificación: P(X >", capacidad_minima, ") =", round(prob_verificacion, 4)))
+print("")
+
+
+k_pacientes <- 0:15
+prob_4horas <- dpois(k_pacientes, lambda_4horas)
+prob_acum_4horas <- ppois(k_pacientes, lambda_4horas)
+prob_superar <- 1 - prob_acum_4horas
+
+tabla_4horas <- data.frame(
+  Pacientes = k_pacientes,
+  Probabilidad = round(prob_4horas, 4),
+  Prob_Acumulada = round(prob_acum_4horas, 4),
+  Prob_Superar = round(prob_superar, 4)
+)
+
+print("TABLA DE DISTRIBUCIÓN - TURNO DE 4 HORAS")
+print(kable(tabla_4horas,
+    caption = paste("Distribución de pacientes en 4 horas (λ =", lambda_4horas, ")"),
+    col.names = c("Pacientes", "P(X = k)", "P(X ≤ k)", "P(X > k)")) %>%
+  kable_styling(bootstrap_options = "striped"))
+
+
+df_grafico <- data.frame(
+  Pacientes = 0:20,
+  Probabilidad = dpois(0:20, lambda_4horas)
+)
+
+df_grafico$Capacidad <- ifelse(df_grafico$Pacientes == capacidad_actual, "Actual",
+                              ifelse(df_grafico$Pacientes == capacidad_minima, "Mínima", "Normal"))
+
+grafico <- ggplot(df_grafico, aes(x = Pacientes, y = Probabilidad, fill = Capacidad)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  scale_fill_manual(values = c("Actual" = "#E74C3C", "Mínima" = "#F39C12", "Normal" = "#3498DB")) +
+  labs(title = "Distribución de Pacientes en Turno de 4 Horas",
+       subtitle = paste("Servicio de urgencias (λ =", lambda_4horas, "pacientes/4h)"),
+       x = "Número de pacientes",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_x_continuous(breaks = 0:20) +
+  theme(legend.position = "top") +
+  geom_vline(xintercept = capacidad_actual, linetype = "dashed", color = "#E74C3C") +
+  geom_vline(xintercept = capacidad_minima, linetype = "dashed", color = "#F39C12") +
+  annotate("text", x = capacidad_actual, y = max(df_grafico$Probabilidad)*0.9, 
+           label = paste("Capacidad\nactual:", capacidad_actual), color = "#E74C3C", size = 3) +
+  annotate("text", x = capacidad_minima, y = max(df_grafico$Probabilidad)*0.7, 
+           label = paste("Capacidad\nmínima:", capacidad_minima), color = "#F39C12", size = 3)
+
+print(grafico)
+
+L
+print("ANÁLISIS ADICIONAL:")
+
+
+prob_menos_5_4h <- ppois(4, lambda_4horas)
+prob_entre_5_10_4h <- ppois(10, lambda_4horas) - ppois(4, lambda_4horas)
+prob_mas_10_4h <- 1 - ppois(10, lambda_4horas)
+
+print(paste("• P(menos de 5 pacientes en 4h):", round(prob_menos_5_4h, 4)))
+print(paste("• P(entre 5 y 10 pacientes en 4h):", round(prob_entre_5_10_4h, 4)))
+print(paste("• P(más de 10 pacientes en 4h):", round(prob_mas_10_4h, 4)))
+
+print(paste("• Pacientes esperados en 1 hora:", lambda_hora))
+print(paste("• Pacientes esperados en 4 horas:", lambda_4horas))
+print(paste("• Pacientes esperados en 12 horas (turno completo):", lambda_hora * 12))
+
+
+print(paste("• Con capacidad actual (", capacidad_actual, "), probabilidad de saturación:", round(prob_superar_capacidad*100, 1), "%"))
+print(paste("• Con capacidad mínima (", capacidad_minima, "), probabilidad de saturación:", round(prob_verificacion*100, 1), "%"))
+```
+
+
+
+**Preguntas:**
+
+a)  ¿Cuál es la probabilidad de que lleguen exactamente 3 pacientes en una hora?
+
+b)  ¿Cuál es la probabilidad de que no llegue ningún paciente en 2 horas consecutivas?
+
+c)  El hospital tiene capacidad para atender 8 pacientes por turno de 4 horas. ¿Cuál es la probabilidad de superar esta capacidad?
+
+d)  ¿Cuál debería ser la capacidad mínima para que la probabilidad de saturación sea menor al 10% en un turno de 4 horas?
+:::
+
+::: {#exr-tcl_poisson}
+Implementa una verificación completa del Teorema Central del Límite para una distribución Poisson con $\lambda = 7$.
+```{r}
+lambda <- 7          
+n_muestras <- 10000  
+tamanos_muestra <- c(5, 15, 30, 50, 100)  
+
+
+generar_medias <- function(n, lambda, n_muestras) {
+  medias <- numeric(n_muestras)
+  for (i in 1:n_muestras) {
+    muestra <- rpois(n, lambda)
+    medias[i] <- mean(muestra)
+  }
+  return(medias)
+}
+
+
+resultados <- list()
+for (n in tamanos_muestra) {
+  resultados[[as.character(n)]] <- generar_medias(n, lambda, n_muestras)
+}
+
+
+
+media_teorica <- lambda
+varianza_teorica <- lambda
+
+graficos <- list()
+
+for (i in 1:length(tamanos_muestra)) {
+  n <- tamanos_muestra[i]
+  medias <- resultados[[as.character(n)]]
+  
+
+  media_obs <- mean(medias)
+  varianza_obs <- var(medias)
+  desviacion_obs <- sd(medias)
+  
+  media_normal <- media_teorica
+  desviacion_normal <- sqrt(varianza_teorica / n)
+  
+
+  df <- data.frame(Medias = medias)
+  
+
+  p <- ggplot(df, aes(x = Medias)) +
+    geom_histogram(aes(y = ..density..), 
+                   bins = 30, 
+                   fill = "lightblue", 
+                   color = "black",
+                   alpha = 0.7) +
+    stat_function(fun = dnorm, 
+                  args = list(mean = media_normal, sd = desviacion_normal),
+                  color = "red", 
+                  linewidth = 1) +
+    labs(title = paste("n =", n),
+         subtitle = paste("Media obs:", round(media_obs, 3), 
+                         "| SD obs:", round(desviacion_obs, 3)),
+         x = "Media muestral",
+         y = "Densidad") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  graficos[[i]] <- p
+}
+
+
+print(grid.arrange(grobs = graficos, ncol = 2, 
+                   top = "Verificación del Teorema Central del Límite para Poisson(λ=7)"))
+
+
+print("VERIFICACIÓN CUANTITATIVA DEL TCL")
+print("==================================")
+print(paste("Distribución original: Poisson(λ =", lambda, ")"))
+print(paste("Media teórica poblacional: μ =", media_teorica))
+print(paste("Varianza teórica poblacional: σ² =", varianza_teorica))
+print("")
+
+analisis_tcl <- data.frame(
+  n = integer(),
+  Media_Observada = numeric(),
+  Media_Teorica_TCL = numeric(),
+  Varianza_Observada = numeric(),
+  Varianza_Teorica_TCL = numeric(),
+  Error_Media = numeric(),
+  Error_Varianza = numeric()
+)
+
+for (n in tamanos_muestra) {
+  medias <- resultados[[as.character(n)]]
+  
+  media_obs <- mean(medias)
+  varianza_obs <- var(medias)
+  
+
+  media_teo_tcl <- media_teorica
+  varianza_teo_tcl <- varianza_teorica / n
+  
+  error_media <- abs(media_obs - media_teo_tcl)
+  error_varianza <- abs(varianza_obs - varianza_teo_tcl)
+  
+  analisis_tcl <- rbind(analisis_tcl, data.frame(
+    n = n,
+    Media_Observada = media_obs,
+    Media_Teorica_TCL = media_teo_tcl,
+    Varianza_Observada = varianza_obs,
+    Varianza_Teorica_TCL = varianza_teo_tcl,
+    Error_Media = error_media,
+    Error_Varianza = error_varianza
+  ))
+}
+
+print("ANÁLISIS POR TAMAÑO DE MUESTRA:")
+print(analisis_tcl)
+
+
+print("")
+print("PRUEBA DE NORMALIDAD PARA n = 100:")
+medias_n100 <- resultados[["100"]]
+
+print(paste("Estadístico W:", round(shapiro_test$statistic, 4)))
+print(paste("Valor p:", round(shapiro_test$p.value, 4)))
+
+if (shapiro_test$p.value > 0.05) {
+  print("No se rechaza normalidad (las medias siguen distribución normal)")
+} else {
+  print("Se rechaza normalidad (las medias no siguen distribución normal)")
+}
+
+
+qq_plot <- ggplot(data.frame(Medias = medias_n100), aes(sample = Medias)) +
+  stat_qq(size = 1, alpha = 0.6) +
+  stat_qq_line(color = "red") +
+  labs(title = "Gráfico Q-Q para Medias con n = 100",
+       subtitle = "Verificación de normalidad",
+       x = "Cuantiles teóricos",
+       y = "Cuantiles observados") +
+  theme_minimal()
+
+print(qq_plot)
+
+
+print("")
+print("COMPARACIÓN DE MOMENTOS:")
+print(paste("Coeficiente de asimetría Poisson original:", round(1/sqrt(lambda), 4)))
+
+
+library(moments)
+
+
+for (n in c(5, 30, 100)) {
+  medias <- resultados[[as.character(n)]]
+  momentos <- rbind(momentos, data.frame(
+    n = n,
+    Asimetria_Observada = round(skewness(medias), 4),
+    Curtosis_Observada = round(kurtosis(medias), 4)
+  ))
+}
+
+print("Evolución de momentos con el tamaño de muestra:")
+print(momentos)
+print("Nota: Para distribución normal, asimetría ≈ 0, curtosis ≈ 3")
+
+
+print("")
+print("VERIFICACIÓN DE PROBABILIDADES ACUMULADAS (n = 30):")
+medias_n30 <- resultados[["30"]]
+
+
+intervalos <- list(
+  c(media_teorica - sqrt(varianza_teorica/30), media_teorica + sqrt(varianza_teorica/30)),
+  c(media_teorica - 1.96*sqrt(varianza_teorica/30), media_teorica + 1.96*sqrt(varianza_teorica/30)),
+  c(6, 8)
+)
+
+for (i in 1:length(intervalos)) {
+  lim_inf <- intervalos[[i]][1]
+  lim_sup <- intervalos[[i]][2]
+  
+  prob_obs <- mean(medias_n30 >= lim_inf & medias_n30 <= lim_sup)
+  prob_teo <- pnorm(lim_sup, media_teorica, sqrt(varianza_teorica/30)) - 
+              pnorm(lim_inf, media_teorica, sqrt(varianza_teorica/30))
+  
+  print(paste("Intervalo [", round(lim_inf, 2), ",", round(lim_sup, 2), "]:"))
+  print(paste("  Probabilidad observada:", round(prob_obs, 4)))
+  print(paste("  Probabilidad teórica (normal):", round(prob_teo, 4)))
+  print(paste("  Diferencia:", round(abs(prob_obs - prob_teo), 4)))
+}
+
+print("")
+print("CONCLUSIÓN DEL TCL:")
+print("1. A medida que n aumenta, la distribución de las medias se aproxima a la normal")
+print("2. La media de las medias muestrales converge a μ = λ")
+print("3. La varianza de las medias muestrales converge a σ²/n = λ/n")
+print("4. La aproximación es buena para n ≥ 30")
+```
+
+:::
+
+::: {#exr-prop_aditiva}
+Verifica por simulación que si $X_1 \sim \text{Poisson}(3.5)$ y $X_2 \sim \text{Poisson}(2.8)$ son independientes, entonces $X_1 + X_2 \sim \text{Poisson}(6.3)$.
+```{r}
+lambda1 <- 3.5
+lambda2 <- 2.8
+lambda_suma <- lambda1 + lambda2  # 6.3
+n_muestras <- 10000
+
+print("VERIFICACIÓN DE SUMA DE VARIABLES POISSON INDEPENDIENTES")
+print("========================================================")
+print(paste("X1 ~ Poisson(λ =", lambda1, ")"))
+print(paste("X2 ~ Poisson(λ =", lambda2, ")"))
+print(paste("Teorema: X1 + X2 ~ Poisson(λ =", lambda_suma, ")"))
+print(paste("Muestras:", n_muestras))
+print("")
+
+x1 <- rpois(n_muestras, lambda1)
+x2 <- rpois(n_muestras, lambda2)
+suma_x1_x2 <- x1 + x2
+
+
+x_suma_directa <- rpois(n_muestras, lambda_suma)
+
+
+estadisticas_suma <- data.frame(
+  Estadistica = c("Media", "Varianza", "Mínimo", "Máximo", "Desviación"),
+  Suma_X1_X2 = c(
+    mean(suma_x1_x2),
+    var(suma_x1_x2),
+    min(suma_x1_x2),
+    max(suma_x1_x2),
+    sd(suma_x1_x2)
+  ),
+  Poisson_Directa = c(
+    mean(x_suma_directa),
+    var(x_suma_directa),
+    min(x_suma_directa),
+    max(x_suma_directa),
+    sd(x_suma_directa)
+  )
+)
+
+print("a) COMPARACIÓN DE ESTADÍSTICAS DESCRIPTIVAS:")
+print(estadisticas_suma)
+
+
+frec_obs <- table(factor(suma_x1_x2, levels = 0:max(suma_x1_x2)))
+frec_esp <- table(factor(x_suma_directa, levels = 0:max(suma_x1_x2)))
+
+
+max_val <- max(max(suma_x1_x2), max(x_suma_directa))
+frec_obs_ajust <- table(factor(suma_x1_x2, levels = 0:max_val))
+frec_esp_ajust <- table(factor(x_suma_directa, levels = 0:max_val))
+
+chi_test <- chisq.test(frec_obs_ajust, p = frec_esp_ajust/sum(frec_esp_ajust))
+
+print("")
+print("b) PRUEBA DE BONDAD DE AJUSTE:")
+print(paste("Estadístico chi-cuadrado:", round(chi_test$statistic, 4)))
+print(paste("Valor p:", round(chi_test$p.value, 4)))
+
+if(chi_test$p.value > 0.05) {
+  print("CONCLUSIÓN: No se rechaza H0 - Las distribuciones son consistentes ✓")
+} else {
+  print("CONCLUSIÓN: Se rechaza H0 - Las distribuciones NO son consistentes")
+}
+
+
+library(ggplot2)
+library(gridExtra)
+
+
+k_vals <- 0:15
+prob_suma_obs <- sapply(k_vals, function(k) mean(suma_x1_x2 == k))
+prob_suma_teo <- dpois(k_vals, lambda_suma)
+prob_directa_obs <- sapply(k_vals, function(k) mean(x_suma_directa == k))
+
+df_comparacion <- data.frame(
+  k = rep(k_vals, 3),
+  Probabilidad = c(prob_suma_obs, prob_suma_teo, prob_directa_obs),
+  Tipo = rep(c("Suma X1+X2 (obs)", "Poisson(6.3) teórica", "Poisson(6.3) directa"), 
+             each = length(k_vals))
+)
+
+grafico_comparacion <- ggplot(df_comparacion, aes(x = k, y = Probabilidad, fill = Tipo)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Comparación: Suma de Poissons vs Poisson Teórica",
+       subtitle = paste("X1 ~ Poisson(3.5) + X2 ~ Poisson(2.8) vs Poisson(6.3)"),
+       x = "Valor de k",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Suma X1+X2 (obs)" = "#3498DB", 
+                              "Poisson(6.3) teórica" = "#E74C3C",
+                              "Poisson(6.3) directa" = "#2ECC71")) +
+  theme(legend.position = "top")
+
+print(grafico_comparacion)
+
+
+print("")
+print("c) EXTENSIÓN: SUMA DE 4 VARIABLES POISSON INDEPENDIENTES")
+print("========================================================")
+
+lambda3 <- 1.2
+lambda4 <- 4.1
+lambda_suma_4 <- lambda1 + lambda2 + lambda3 + lambda4
+
+print(paste("X1 ~ Poisson(λ =", lambda1, ")"))
+print(paste("X2 ~ Poisson(λ =", lambda2, ")"))
+print(paste("X3 ~ Poisson(λ =", lambda3, ")"))
+print(paste("X4 ~ Poisson(λ =", lambda4, ")"))
+print(paste("Teorema: X1 + X2 + X3 + X4 ~ Poisson(λ =", lambda_suma_4, ")"))
+
+
+x3 <- rpois(n_muestras, lambda3)
+x4 <- rpois(n_muestras, lambda4)
+suma_4_vars <- x1 + x2 + x3 + x4
+
+
+x_suma_4_directa <- rpois(n_muestras, lambda_suma_4)
+
+
+estadisticas_4vars <- data.frame(
+  Estadistica = c("Media", "Varianza", "Mínimo", "Máximo"),
+  Suma_4_Variables = c(
+    mean(suma_4_vars),
+    var(suma_4_vars),
+    min(suma_4_vars),
+    max(suma_4_vars)
+  ),
+  Poisson_Directa_4 = c(
+    mean(x_suma_4_directa),
+    var(x_suma_4_directa),
+    min(x_suma_4_directa),
+    max(x_suma_4_directa)
+  )
+)
+
+print("COMPARACIÓN PARA 4 VARIABLES:")
+print(estadisticas_4vars)
+
+
+k_vals_4 <- 0:25
+prob_suma_4_obs <- sapply(k_vals_4, function(k) mean(suma_4_vars == k))
+prob_suma_4_teo <- dpois(k_vals_4, lambda_suma_4)
+prob_directa_4_obs <- sapply(k_vals_4, function(k) mean(x_suma_4_directa == k))
+
+df_comparacion_4 <- data.frame(
+  k = rep(k_vals_4, 3),
+  Probabilidad = c(prob_suma_4_obs, prob_suma_4_teo, prob_directa_4_obs),
+  Tipo = rep(c("Suma 4 variables (obs)", "Poisson teórica", "Poisson directa"), 
+             each = length(k_vals_4))
+)
+
+grafico_4vars <- ggplot(df_comparacion_4, aes(x = k, y = Probabilidad, fill = Tipo)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Suma de 4 Variables Poisson Independientes",
+       subtitle = paste("λ total =", lambda_suma_4),
+       x = "Valor de k",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Suma 4 variables (obs)" = "#3498DB", 
+                              "Poisson teórica" = "#E74C3C",
+                              "Poisson directa" = "#2ECC71")) +
+  theme(legend.position = "top")
+
+print(grafico_4vars)
+
+
+print("")
+print("VERIFICACIÓN ADICIONAL: PROPIEDAD REPRODUCTIVA")
+print("==============================================")
+
+
+diff_media_2vars <- abs(mean(suma_x1_x2) - lambda_suma) / lambda_suma * 100
+diff_var_2vars <- abs(var(suma_x1_x2) - lambda_suma) / lambda_suma * 100
+
+diff_media_4vars <- abs(mean(suma_4_vars) - lambda_suma_4) / lambda_suma_4 * 100
+diff_var_4vars <- abs(var(suma_4_vars) - lambda_suma_4) / lambda_suma_4 * 100
+
+verificacion <- data.frame(
+  Caso = c("2 variables", "4 variables"),
+  Lambda_Teorico = c(lambda_suma, lambda_suma_4),
+  Media_Observada = c(mean(suma_x1_x2), mean(suma_4_vars)),
+  Varianza_Observada = c(var(suma_x1_x2), var(suma_4_vars)),
+  Error_Media = c(round(diff_media_2vars, 2), round(diff_media_4vars, 2)),
+  Error_Varianza = c(round(diff_var_2vars, 2), round(diff_var_4vars, 2))
+)
+
+print("RESUMEN DE VERIFICACIÓN:")
+print(verificacion)
+
+
+```
+
+
+
+**Pasos específicos:**
+
+a)  Generar 10,000 muestras de cada distribución y calcule su suma
+b)  Comparar las estadísticas de la suma con una Poisson(6.3) directa
+c)  Extienda la verificación a la suma de 4 variables Poisson independientes
+:::
+
+::: {#exr-aplicacion_web}
+Un sitio web recibe en promedio 15 visitantes por minuto durante las horas pico. El servidor puede manejar hasta 25 solicitudes simultáneas sin degradación del rendimiento.
+```{r}
+lambda <- 15  # 15 visitantes por minuto en promedio
+capacidad_actual <- 25  # solicitudes simultáneas sin degradación
+n_sim_minutos <- 10000  # simulaciones para análisis por minuto
+n_sim_horas <- 60       # minutos en una hora para simulación temporal
+
+print("ANÁLISIS DE CAPACIDAD DE SERVIDOR WEB")
+print("======================================")
+print(paste("Parámetro Poisson: λ =", lambda, "visitantes/minuto"))
+print(paste("Capacidad actual del servidor:", capacidad_actual, "solicitudes"))
+print("")
+
+# a) Probabilidad de degradación en un minuto
+prob_degradacion_actual <- 1 - ppois(capacidad_actual, lambda)
+
+print("a) PROBABILIDAD DE DEGRADACIÓN CON CAPACIDAD ACTUAL:")
+print(paste("   P(X >", capacidad_actual, ") =", round(prob_degradacion_actual, 4)))
+print(paste("   Esto es:", round(prob_degradacion_actual * 100, 2), "% de probabilidad"))
+print("")
+
+# b) Probabilidad con capacidad duplicada
+capacidad_duplicada <- 50
+prob_degradacion_duplicada <- 1 - ppois(capacidad_duplicada, lambda)
+
+print("b) PROBABILIDAD DE DEGRADACIÓN CON CAPACIDAD DUPLICADA:")
+print(paste("   Nueva capacidad:", capacidad_duplicada, "solicitudes"))
+print(paste("   P(X >", capacidad_duplicada, ") =", round(prob_degradacion_duplicada, 6)))
+print(paste("   Esto es:", round(prob_degradacion_duplicada * 100, 4), "% de probabilidad"))
+print(paste("   Reducción:", round((1 - prob_degradacion_duplicada/prob_degradacion_actual) * 100, 1), "%"))
+print("")
+
+# c) Capacidad óptima para P(degradación) < 1%
+prob_objetivo <- 0.01
+capacidad_optima <- qpois(1 - prob_objetivo, lambda)
+
+# Verificación
+prob_verificacion <- 1 - ppois(capacidad_optima, lambda)
+
+print("c) CAPACIDAD ÓPTIMA PARA P(DEGRADACIÓN) < 1%:")
+print(paste("   Probabilidad objetivo: <", prob_objetivo))
+print(paste("   Capacidad óptima:", capacidad_optima, "solicitudes"))
+print(paste("   Verificación: P(X >", capacidad_optima, ") =", round(prob_verificacion, 4)))
+print("")
+
+# d) Simulación del comportamiento durante una hora
+set.seed(456)  # Semilla diferente para esta simulación
+visitantes_por_minuto <- rpois(n_sim_horas, lambda)
+degradacion_por_minuto <- visitantes_por_minuto > capacidad_actual
+tiempo_degradacion <- sum(degradacion_por_minuto)
+porcentaje_degradacion <- (tiempo_degradacion / n_sim_horas) * 100
+
+print("d) SIMULACIÓN DE UNA HORA (60 MINUTOS):")
+print(paste("   Minutos con degradación:", tiempo_degradacion, "de", n_sim_horas))
+print(paste("   Porcentaje de tiempo con degradación:", round(porcentaje_degradacion, 1), "%"))
+print(paste("   Visitantes totales en la hora:", sum(visitantes_por_minuto)))
+print(paste("   Visitantes promedio por minuto:", round(mean(visitantes_por_minuto), 2)))
+print("")
+
+# ANÁLISIS DETALLADO DE CAPACIDADES
+print("ANÁLISIS DETALLADO DE CAPACIDADES:")
+print("==================================")
+
+capacidades_analisis <- c(20, 25, 30, 35, 40, 45, 50, capacidad_optima)
+analisis_capacidades <- data.frame(
+  Capacidad = capacidades_analisis,
+  Prob_Degradacion = sapply(capacidades_analisis, function(cap) 1 - ppois(cap, lambda)),
+  Minutos_Hora_Degradacion = sapply(capacidades_analisis, function(cap) {
+    degradacion <- visitantes_por_minuto > cap
+    round((sum(degradacion) / n_sim_horas) * 100, 1)
+  })
+)
+
+analisis_capacidades$Prob_Degradacion_Porcentaje <- round(analisis_capacidades$Prob_Degradacion * 100, 2)
+analisis_capacidades <- analisis_capacidades[order(analisis_capacidades$Capacidad), ]
+
+print(analisis_capacidades)
+
+# GRÁFICOS
+library(ggplot2)
+library(gridExtra)
+
+# Gráfico 1: Distribución de Poisson y capacidades
+k_vals <- 0:40
+prob_poisson <- dpois(k_vals, lambda)
+df_poisson <- data.frame(Visitantes = k_vals, Probabilidad = prob_poisson)
+
+# Identificar zonas de capacidad
+df_poisson$Zona <- ifelse(df_poisson$Visitantes <= capacidad_actual, "Normal", 
+                         ifelse(df_poisson$Visitantes <= capacidad_optima, "Riesgo", "Degradación"))
+
+grafico_distribucion <- ggplot(df_poisson, aes(x = Visitantes, y = Probabilidad, fill = Zona)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  scale_fill_manual(values = c("Normal" = "#2ECC71", "Riesgo" = "#F39C12", "Degradación" = "#E74C3C")) +
+  geom_vline(xintercept = capacidad_actual, linetype = "dashed", color = "blue", size = 1) +
+  geom_vline(xintercept = capacidad_optima, linetype = "dashed", color = "red", size = 1) +
+  annotate("text", x = capacidad_actual, y = max(prob_poisson)*0.9, 
+           label = paste("Capacidad\nactual:", capacidad_actual), color = "blue", size = 3) +
+  annotate("text", x = capacidad_optima, y = max(prob_poisson)*0.7, 
+           label = paste("Capacidad\nóptima:", capacidad_optima), color = "red", size = 3) +
+  labs(title = "Distribución de Visitantes por Minuto",
+       subtitle = paste("λ =", lambda, "| Zonas de operación del servidor"),
+       x = "Número de visitantes",
+       y = "Probabilidad") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+# Gráfico 2: Simulación de una hora
+df_simulacion_hora <- data.frame(
+  Minuto = 1:n_sim_horas,
+  Visitantes = visitantes_por_minuto,
+  Estado = ifelse(visitantes_por_minuto > capacidad_actual, "Degradación", "Normal")
+)
+
+grafico_simulacion <- ggplot(df_simulacion_hora, aes(x = Minuto, y = Visitantes, color = Estado)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_hline(yintercept = capacidad_actual, linetype = "dashed", color = "red", size = 1) +
+  scale_color_manual(values = c("Normal" = "#2ECC71", "Degradación" = "#E74C3C")) +
+  labs(title = "Simulación del Comportamiento del Servidor (60 minutos)",
+       subtitle = paste("Línea roja: capacidad máxima (", capacidad_actual, "solicitudes)"),
+       x = "Minuto",
+       y = "Número de visitantes") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+# Gráfico 3: Probabilidad de degradación vs capacidad
+capacidades_grafico <- 15:50
+probabilidades_grafico <- sapply(capacidades_grafico, function(cap) 1 - ppois(cap, lambda))
+df_capacidad_prob <- data.frame(Capacidad = capacidades_grafico, 
+                               Probabilidad = probabilidades_grafico)
+
+grafico_probabilidad <- ggplot(df_capacidad_prob, aes(x = Capacidad, y = Probabilidad)) +
+  geom_line(color = "steelblue", size = 1.5) +
+  geom_point(data = data.frame(x = capacidad_actual, y = prob_degradacion_actual),
+             aes(x = x, y = y), color = "red", size = 3) +
+  geom_point(data = data.frame(x = capacidad_optima, y = prob_verificacion),
+             aes(x = x, y = y), color = "green", size = 3) +
+  geom_hline(yintercept = prob_objetivo, linetype = "dashed", color = "orange") +
+  annotate("text", x = capacidad_actual, y = prob_degradacion_actual + 0.02, 
+           label = "Capacidad actual", color = "red", size = 3) +
+  annotate("text", x = capacidad_optima, y = prob_verificacion - 0.02, 
+           label = "Capacidad óptima", color = "green", size = 3) +
+  annotate("text", x = 40, y = prob_objetivo + 0.005, 
+           label = "Objetivo 1%", color = "orange", size = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Probabilidad de Degradación vs Capacidad del Servidor",
+       x = "Capacidad del servidor (solicitudes)",
+       y = "Probabilidad de degradación") +
+  theme_minimal()
+
+# Mostrar gráficos
+print(grafico_distribucion)
+print(grafico_simulacion)
+print(grafico_probabilidad)
+
+# RESUMEN EJECUTIVO
+print("")
+print("RESUMEN EJECUTIVO:")
+print("==================")
+print(paste("1. Probabilidad actual de degradación:", round(prob_degradacion_actual * 100, 1), "%"))
+print(paste("2. Con capacidad duplicada (50):", round(prob_degradacion_duplicada * 100, 3), "%"))
+print(paste("3. Capacidad óptima para <1% de degradación:", capacidad_optima))
+print(paste("4. En una hora típica:", round(porcentaje_degradacion, 1), "% del tiempo con degradación"))
+print("")
+print("RECOMENDACIONES:")
+print("• La capacidad actual es insuficiente (alta probabilidad de degradación)")
+print("• Duplicar la capacidad prácticamente elimina la degradación")
+print("• La capacidad óptima balanceada es", capacidad_optima, "solicitudes")
+```
+
+
+**Análisis requerido:**
+
+a)  ¿Cuál es la probabilidad de que en un minuto el servidor experimente degradación?
+
+b)  Si se duplica la capacidad del servidor (50 solicitudes), ¿cómo cambia la probabilidad de degradación?
+
+c)  ¿Cuál sería la capacidad óptima del servidor para que la probabilidad de degradación sea menor al 1%?
+
+d)  Simule el comportamiento del servidor durante una hora (60 minutos) y calcule el porcentaje de tiempo con degradación.
+:::
+
+::: {#exr-inventarios}
+Una tienda registra que el número de cierto producto vendido por día sigue una distribución Poisson con $\lambda = 8$.
+
+**Problemas de optimización:**
+```{r}
+lambda <- 8  
+inventario_actual <- 12
+n_sim <- 10000
+
+print("ANÁLISIS DE GESTIÓN DE INVENTARIO")
+print("==================================")
+print(paste("Demanda diaria: Poisson(λ =", lambda, ")"))
+print(paste("Inventario actual:", inventario_actual, "unidades"))
+print("")
+
+
+prob_agotamiento <- 1 - ppois(inventario_actual - 1, lambda)
+
+print("a) PROBABILIDAD DE AGOTAMIENTO DE INVENTARIO:")
+print(paste("   P(Demanda >", inventario_actual, ") =", round(prob_agotamiento, 4)))
+print(paste("   Esto es:", round(prob_agotamiento * 100, 2), "% de probabilidad"))
+print("")
+
+prob_objetivo <- 0.05
+inventario_optimo <- qpois(1 - prob_objetivo, lambda)
+
+
+prob_verificacion <- 1 - ppois(inventario_optimo - 1, lambda)
+
+print("b) INVENTARIO ÓPTIMO PARA P(AGOTAMIENTO) < 5%:")
+print(paste("   Probabilidad objetivo: <", prob_objetivo))
+print(paste("   Inventario óptimo:", inventario_optimo, "unidades"))
+print(paste("   Verificación: P(Demanda >", inventario_optimo, ") =", round(prob_verificacion, 4)))
+print("")
+
+
+costo_mantenimiento <- 2   
+costo_venta_perdida <- 15  
+costo_adquisicion <- 10    
+
+
+calcular_costos <- function(demanda, inventario) {
+  unidades_vendidas <- min(demanda, inventario)
+  unidades_no_vendidas <- max(inventario - demanda, 0)
+  ventas_perdidas <- max(demanda - inventario, 0)
+  
+  costo_total <- (unidades_no_vendidas * costo_mantenimiento) + 
+                 (ventas_perdidas * costo_venta_perdida) + 
+                 (inventario * costo_adquisicion)
+  
+  return(costo_total)
+}
+
+
+demandas <- rpois(n_sim, lambda)
+costos_diarios <- sapply(demandas, function(d) calcular_costos(d, inventario_actual))
+costo_esperado_actual <- mean(costos_diarios)
+
+
+costos_optimos <- sapply(demandas, function(d) calcular_costos(d, inventario_optimo))
+costo_esperado_optimo <- mean(costos_optimos)
+
+print("c) ANÁLISIS DE COSTOS ESPERADOS:")
+print(paste("   Costo de mantenimiento: $", costo_mantenimiento, "por unidad no vendida"))
+print(paste("   Costo de venta perdida: $", costo_venta_perdida, "por unidad"))
+print(paste("   Costo de adquisición: $", costo_adquisicion, "por unidad"))
+print("")
+print(paste("   Con inventario actual (", inventario_actual, "unidades):"))
+print(paste("   - Costo esperado diario: $", round(costo_esperado_actual, 2)))
+print("")
+print(paste("   Con inventario óptimo (", inventario_optimo, "unidades):"))
+print(paste("   - Costo esperado diario: $", round(costo_esperado_optimo, 2)))
+print(paste("   - Ahorro potencial: $", round(costo_esperado_actual - costo_esperado_optimo, 2)))
+print("")
+
+
+print("DESGLOSE DE COSTOS (inventario actual):")
+ventas_promedio <- mean(pmin(demandas, inventario_actual))
+unidades_no_vendidas_promedio <- mean(pmax(inventario_actual - demandas, 0))
+ventas_perdidas_promedio <- mean(pmax(demandas - inventario_actual, 0))
+
+print(paste("   Ventas promedio por día:", round(ventas_promedio, 2)))
+print(paste("   Unidades no vendidas promedio:", round(unidades_no_vendidas_promedio, 2)))
+print(paste("   Ventas perdidas promedio:", round(ventas_perdidas_promedio, 2)))
+print("")
+print(paste("   Costo mantenimiento: $", round(unidades_no_vendidas_promedio * costo_mantenimiento, 2)))
+print(paste("   Costo ventas perdidas: $", round(ventas_perdidas_promedio * costo_venta_perdida, 2)))
+print(paste("   Costo adquisición: $", round(inventario_actual * costo_adquisicion, 2)))
+print("")
+
+
+print("ANÁLISIS COMPARATIVO DE NIVELES DE INVENTARIO:")
+print("==============================================")
+
+niveles_inventario <- 5:20
+analisis_inventarios <- data.frame(
+  Inventario = niveles_inventario,
+  Prob_Agotamiento = sapply(niveles_inventario, function(inv) 1 - ppois(inv - 1, lambda)),
+  Costo_Esperado = sapply(niveles_inventario, function(inv) {
+    costos <- sapply(demandas, function(d) calcular_costos(d, inv))
+    mean(costos)
+  })
+)
+
+analisis_inventarios$Prob_Agotamiento_Porcentaje <- round(analisis_inventarios$Prob_Agotamiento * 100, 1)
+analisis_inventarios$Costo_Esperado <- round(analisis_inventarios$Costo_Esperado, 2)
+
+
+inventario_min_costo <- analisis_inventarios$Inventario[which.min(analisis_inventarios$Costo_Esperado)]
+costo_minimo <- min(analisis_inventarios$Costo_Esperado)
+
+print(analisis_inventarios)
+
+print("")
+print(paste("INVENTARIO DE MÍNIMO COSTO:", inventario_min_costo, "unidades"))
+print(paste("COSTO MÍNIMO ESPERADO: $", costo_minimo))
+print("")
+
+
+
+
+grafico_probabilidad <- ggplot(analisis_inventarios, aes(x = Inventario, y = Prob_Agotamiento)) +
+  geom_line(color = "steelblue", size = 1.5) +
+  geom_point(data = data.frame(x = inventario_actual, y = prob_agotamiento),
+             aes(x = x, y = y), color = "red", size = 3) +
+  geom_point(data = data.frame(x = inventario_optimo, y = prob_verificacion),
+             aes(x = x, y = y), color = "green", size = 3) +
+  geom_hline(yintercept = prob_objetivo, linetype = "dashed", color = "orange") +
+  annotate("text", x = inventario_actual, y = prob_agotamiento + 0.02, 
+           label = "Inventario actual", color = "red", size = 3) +
+  annotate("text", x = inventario_optimo, y = prob_verificacion - 0.02, 
+           label = "Inventario óptimo (5%)", color = "green", size = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Probabilidad de Agotamiento vs Nivel de Inventario",
+       x = "Nivel de inventario (unidades)",
+       y = "Probabilidad de agotamiento") +
+  theme_minimal()
+
+grafico_costo <- ggplot(analisis_inventarios, aes(x = Inventario, y = Costo_Esperado)) +
+  geom_line(color = "purple", size = 1.5) +
+  geom_point(data = data.frame(x = inventario_actual, y = costo_esperado_actual),
+             aes(x = x, y = y), color = "red", size = 3) +
+  geom_point(data = data.frame(x = inventario_min_costo, y = costo_minimo),
+             aes(x = x, y = y), color = "green", size = 3) +
+  annotate("text", x = inventario_actual, y = costo_esperado_actual + 5, 
+           label = "Inventario actual", color = "red", size = 3) +
+  annotate("text", x = inventario_min_costo, y = costo_minimo - 5, 
+           label = "Mínimo costo", color = "green", size = 3) +
+  labs(title = "Costo Esperado Diario vs Nivel de Inventario",
+       x = "Nivel de inventario (unidades)",
+       y = "Costo esperado ($)") +
+  theme_minimal()
+
+
+k_vals <- 0:20
+prob_demanda <- dpois(k_vals, lambda)
+df_demanda <- data.frame(Demanda = k_vals, Probabilidad = prob_demanda)
+
+grafico_demanda <- ggplot(df_demanda, aes(x = Demanda, y = Probabilidad)) +
+  geom_bar(stat = "identity", fill = "lightblue", alpha = 0.7) +
+  geom_vline(xintercept = inventario_actual, linetype = "dashed", color = "red", size = 1) +
+  geom_vline(xintercept = inventario_optimo, linetype = "dashed", color = "green", size = 1) +
+  annotate("text", x = inventario_actual, y = max(prob_demanda)*0.9, 
+           label = paste("Inventario\nactual:", inventario_actual), color = "red", size = 3) +
+  annotate("text", x = inventario_optimo, y = max(prob_demanda)*0.7, 
+           label = paste("Inventario\nóptimo:", inventario_optimo), color = "green", size = 3) +
+  labs(title = "Distribución de la Demanda Diaria",
+       subtitle = paste("Poisson(λ =", lambda, ")"),
+       x = "Demanda (unidades)",
+       y = "Probabilidad") +
+  theme_minimal()
+
+
+print(grafico_probabilidad)
+print(grafico_costo)
+print(grafico_demanda)
+
+
+print("")
+print("RESUMEN EJECUTIVO:")
+print("==================")
+print(paste("1. Probabilidad actual de agotamiento:", round(prob_agotamiento * 100, 1), "%"))
+print(paste("2. Inventario para <5% de agotamiento:", inventario_optimo, "unidades"))
+print(paste("3. Costo esperado actual: $", round(costo_esperado_actual, 2)))
+print(paste("4. Costo esperado óptimo: $", round(costo_esperado_optimo, 2)))
+print(paste("5. Inventario de mínimo costo:", inventario_min_costo, "unidades"))
+print("")
+print("RECOMENDACIONES:")
+print(paste("• Reducir inventario de", inventario_actual, "a", inventario_min_costo, "unidades"))
+print(paste("• Esto reduciría costos en $", round(costo_esperado_actual - costo_minimo, 2), "por día"))
+print("• Mejoraría la rotación de inventario sin aumentar riesgo de agotamiento")
+```
+
+
+
+a)  Si la tienda mantiene un inventario de 12 unidades al inicio del día, ¿cuál es la probabilidad de quedarse sin existencias?
+
+b)  ¿Cuántas unidades debe tener para que la probabilidad de agotarse sea menor al 5%?
+
+c)  Calcule el costo esperado diario si:
+
+    -   Cada unidad no vendida cuesta \$2 mantenerla en inventario
+    -   Cada venta perdida por falta de stock cuesta \$15
+    -   El costo de adquisición es \$10 por unidad
+
+d)  Determine el nivel óptimo de inventario que minimiza el costo total esperado.
+:::

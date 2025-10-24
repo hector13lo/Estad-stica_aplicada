@@ -1,0 +1,161 @@
+---
+title: "Distribución Hipergeométrica"
+author: Hector Eduardo Muñiz Navarro
+lang: es
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+Esta distribucion de probabilidad surge en el contexto de la toma de una
+muestra de un conjunto de objetos de dos tipos. Supongamos que tenemos
+N objetos dentro de una caja, de los cuales K son de un primer tipo y
+N ´ K son de un segundo tipo. V´ease la Figura 3.7. Los objetos del primer
+tipo pueden corresponder a artıculos en buen estado y los del segundo tipo pueden corresponder a artıculos en buen estado y los del segundo tipo
+a art´ıculos en mal estado, o bien a personas con una cierta caracterıstica y a aquellas que no poseen dicha caracterıstica
+
+
+
+
+
+
+DEMOSTRACIONES DE HIPERGEOMETRICA
+
+Demuestre que la funcion de probabilidad de la distribucion hipergeometrica efectivamente es una funcion de probabilidad.
+
+```{r}
+# Demostración: la función de probabilidad hipergeométrica suma 1
+
+# Parámetros de la distribución
+N <- 20   # tamaño de la población total
+K <- 7    # éxitos en la población
+n <- 5    # tamaño de la muestra
+
+#  (número de éxitos en la muestra)
+x <- 0:min(K, n)
+
+# función dhyper()
+probabilidades <- dhyper(x, K, N - K, n)
+
+# 1
+suma_probabilidades <- sum(probabilidades)
+
+# Resultados
+cat("Valores posibles de X:", x, "\n")
+cat("Probabilidades:", round(probabilidades, 4), "\n")
+cat("Suma total de las probabilidades:", suma_probabilidades, "\n")
+
+#Gráfica de la distribución
+barplot(probabilidades, names.arg = x, col = "skyblue",
+        main = "Distribución Hipergeométrica",
+        xlab = "Número de éxitos (x)",
+        ylab = "P(X = x)")
+
+```
+
+
+La función de masa de la distribución hipergeométrica es creciente  
+
+```{r}
+# Parámetros 
+N <- 20
+K <- 7
+n <- 5
+
+# Soporte posible de X
+x_min <- max(0, n - (N - K))
+x_max <- min(K, n)
+xs <- x_min:x_max
+
+# Probabilidades hipergeométricas
+probs <- dhyper(xs, K, N - K, n)
+
+
+R <- rep(NA, length(xs))
+for (i in seq_along(xs)) {
+  x <- xs[i]
+  if (x < x_max) {
+    R[i] <- probs[i+1] / probs[i]
+  } else {
+    R[i] <- NA
+  }
+}
+
+# Región donde f(x+1) >= f(x)
+crecientes_idx <- which(!is.na(R) & R >= 1)
+crecientes_x <- xs[crecientes_idx]
+
+# Límite analítico (real)
+limite_analitico <- (K * n + K + n - N - 1) / (N + 2)
+
+# Mostrar resultados
+cat("Parámetros: N =", N, "K =", K, "n =", n, "\n")
+cat("Soporte de X:", x_min, "a", x_max, "\n")
+cat("Valores x donde f(x+1) >= f(x):", if (length(crecientes_x)>0) crecientes_x else "ninguno", "\n")
+cat("Límite analítico (real):", round(limite_analitico, 4),
+    " -> enteros <= ", floor(limite_analitico), "\n\n")
+
+# tabla con x, probs y R
+tabla <- data.frame(
+  x = xs,
+  P = round(probs, 6),
+  R_next = round(R, 6),
+  crec = ifelse(!is.na(R) & R >= 1, "SI", "")
+)
+print(tabla)
+
+# Gráfica: 
+cols <- ifelse(xs %in% crecientes_x, "steelblue", "gray80")
+barplot(probs, names.arg = xs, col = cols,
+        main = "PMF Hipergeométrica (coloreado = f(x+1) >= f(x))",
+        xlab = "x", ylab = "P(X = x)")
+legend("topright", fill = c("steelblue", "gray80"),
+       legend = c("f(x+1) >= f(x)", "no creciente hacia x+1"))
+
+```
+
+
+
+
+
+Problema: 
+Distribución Hipergeométrica
+Una fábrica tiene un lote de 50 piezas, de las cuales 8 son defectuosas y 42 son buenas.
+Se seleccionan 10 piezas al azar, sin reemplazo.
+
+1 ¿Cuál es la probabilidad de obtener exactamente 2 piezas defectuosas?
+2️ ¿Cuál es la probabilidad de obtener al menos 1 pieza defectuosa?
+3️ Calcula la media y la varianza del número de piezas defectuosas en la muestra.
+
+```{r}
+# Parámetros
+N <- 50   # tamaño de la población
+K <- 8    # número de defectuosas
+n <- 10   # tamaño de la muestra
+
+# 1) Probabilidad de obtener exactamente 2 defectuosas
+prob_2 <- dhyper(2, K, N - K, n)
+prob_2
+
+# 2) Probabilidad de obtener al menos 1 defectuosa
+prob_al_menos_1 <- 1 - dhyper(0, K, N - K, n)
+prob_al_menos_1
+
+# 3) Media y varianza
+media <- n * (K / N)
+varianza <- n * (K / N) * ((N - K) / N) * ((N - n) / (N - 1))
+
+media
+varianza
+
+# Mostrar resultados redondeados
+cat("P(X=2) =", round(prob_2, 4), "\n")
+cat("P(X>=1) =", round(prob_al_menos_1, 4), "\n")
+cat("Media =", round(media, 4), "\n")
+cat("Varianza =", round(varianza, 4), "\n")
+
+```
+

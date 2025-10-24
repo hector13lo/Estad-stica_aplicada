@@ -1,0 +1,737 @@
+---
+title: "Distribución Geométrica"
+lang: es
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+library(kableExtra)
+library(gridExtra)
+```
+
+La **distribución geométrica** modela el número de ensayos independientes de Bernoulli necesarios antes de obtener el primer éxito. Es fundamental para analizar tiempos de espera y procesos que involucran la búsqueda del primer evento exitoso.
+
+:::::::: {#def-geometrica}
+Una variable aleatoria $X$ sigue una distribución geométrica si representa el número de ensayos necesarios antes de obtener el primer éxito en una secuencia de ensayos independientes de Bernoulli. Si la probabilidad de éxito en cada ensayo es $p$, entonces la función de masa de probabilidad (pmf) está dada por:
+
+$$f(x)= p(1-p)^x \quad \text{para } x =0,  1, 2, 3, \ldots$$
+
+Una variable aleatoria $X$ que tiene distribución geométrica será denotada como $X \sim \text{geo}(p)$.
+
+:::
+
+## Características de la Distribución Geométrica
+
+**Parámetros**
+
+-   $p$: probabilidad de éxito en cada ensayo, donde $0 < p \leq 1$
+
+**Función de Distribución**
+
+\begin{equation}
+F(x) = \sum_{u\leq x} f(u) = \begin{cases}
+0 & \text{si } x < 0 \\
+1-(1-p)^{k+1} & \text{si } k \leq x \leq k+1; \quad k=0,1, \dots 
+\end{cases}
+\end{equation}
+
+**Parámetros Estadísticos**
+
+Esperanza (Media): $$E(X) = \frac{1-p}{p}$$
+
+Varianza: $$\text{Var}(X) = \frac{1-p}{p^2}$$
+
+Desviación Estándar: $$\sigma = \sqrt{\frac{1-p}{p^2}} = \frac{\sqrt{1-p}}{p}$$
+
+## Ejemplo Básico
+
+::: {#exm-geom_1}
+Lanzamiento de monedas - Búsqueda de la primera cara. Consideramos una moneda justa ($p=0.5$), y queremos modelar el número de lanzamientos hasta antes de obtener la primera cara.
+
+```{r}
+#| label: moneda-geometrica
+# Parámetro
+p_cara <- 0.5
+
+# Calcular probabilidades para los primeros 11 ensayos
+k_moneda <- 0:10
+prob_geometrica <- dgeom(k_moneda , p_cara)  
+
+# Crear tabla
+geometrica_moneda <- data.frame(
+  Ensayo = k_moneda,
+  Probabilidad = prob_geometrica,
+  Prob_Acumulada = pgeom(k_moneda, p_cara)
+)
+
+kable(geometrica_moneda, 
+      caption = "Distribución Geométrica - Primera cara (p = 0.5)",
+      digits = 4,
+      col.names = c("Ensayo", "P(X = x)", "P(X ≤ x)")) %>%
+  kable_styling(bootstrap_options = "striped")
+
+# Parámetros estadísticos
+media_moneda <- (1-p_cara) / p_cara
+varianza_moneda <- (1 - p_cara) / (p_cara^2)
+desv_std_moneda <- sqrt(varianza_moneda)
+
+
+cat("Media (ensayos esperados):", media_moneda, "\n")
+cat("Varianza:", varianza_moneda, "\n")
+cat("Desviación estándar:", round(desv_std_moneda, 4), "\n")
+
+```
+
+**Visualización**
+
+```{r}
+#| label: grafico-geometrica-basico
+#| fig-cap: "Distribución Geométrica - Primera cara en lanzamiento de moneda"
+ggplot(geometrica_moneda, aes(x = Ensayo, y = Probabilidad)) +
+  geom_col(fill = "steelblue", alpha = 0.7, width = 0.8) +
+  geom_text(aes(label = round(Probabilidad, 3)), vjust = -0.5, size = 3) +
+  geom_vline(xintercept = media_moneda, color = "red", linetype = "dashed", linewidth = 1) +
+  annotate("text", x = media_moneda + 1.5, y = max(prob_geometrica) * 0.8, 
+           label = paste("E[X] =", media_moneda), color = "red") +
+  scale_x_continuous(breaks = k_moneda) +
+  labs(title = paste("Distribución Geométrica(", p_cara, ")"),
+       subtitle = "Número de lanzamientos antes de obtener la primera cara",
+       x = "Número de Ensayos",
+       y = "Probabilidad") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+:::
+
+## Comparación: Efecto del parámetro
+
+A continuación exploramos cómo varía la distribución geométrica al cambiar el parámetro $p$.
+
+```{r}
+#| label: diferentes-p
+# Diferentes probabilidades de éxito
+p_values <- c(0.1, 0.3, 0.5, 0.7, 0.9)
+k_max <- 15
+
+# Crear data frame para comparación
+geometrica_comp <- data.frame()
+for(p in p_values) {
+  k_vals <- 0:k_max
+  probs <- dgeom(k_vals, p)  
+  
+  temp_data <- data.frame(
+    p_label = paste("p =", p),
+    k = k_vals,
+    probabilidad = probs,
+    media = (1-p)/p,
+    varianza = (1-p)/(p^2)
+  )
+  geometrica_comp <- rbind(geometrica_comp, temp_data)
+}
+
+# Tabla de parámetros
+parametros_comp <- data.frame(
+  p = p_values,
+  Media = (1-p_values)/p_values,
+  Varianza = (1-p_values)/(p_values^2),
+  Desv_Std = sqrt((1-p_values)/(p_values^2))
+)
+
+kable(parametros_comp, 
+      caption = "Parámetros de la distribución geométrica para diferentes valores de p",
+      digits = 4,
+      col.names = c("p", "Media", "Varianza", "Desv. Std")) |> 
+  kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+#| label: grafico-diferentes-p
+#| fig-cap: "Distribución Geométrica para diferentes valores de p"
+# Filtrar para mejor visualización
+geometrica_filtered <- geometrica_comp[geometrica_comp$probabilidad > 0.005, ]
+
+ggplot(geometrica_filtered, aes(x = k, y = probabilidad, color = p_label)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(~p_label, scales = "free") +
+  labs(title = "Distribución Geométrica para diferentes valores de p",
+       x = "Número de Ensayos",
+       y = "Probabilidad",
+       color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
+## Propiedades Importantes
+
+### Propiedad de Pérdida de Memoria
+
+Sea $X\sim geo(p)$ Entonces para cualesquiera enteros $s, t \geq 0$ se cumple la propiedad de pérdida de memoria:
+
+$$P(X \geq s + t | X \geq s) = P(X \geq t)$$
+
+**Verificación Numérica**
+
+Consideremos una variable aleatoria geométrica con $p=0.3$, y verifiquemos la propiedad para $s=5$ y $t=3$.
+
+```{r}
+#| label: falta-memoria
+# Demostración de la propiedad de falta de memoria
+p_mem <- 0.3
+s <- 5
+t <- 3
+
+# P(X >= s + t)
+prob_s_t <- 1 - pgeom(s + t-1, p_mem)  
+
+# P(X >= s) 
+prob_s <- 1- pgeom(s-1, p_mem)
+
+# P(X >= t) 
+prob_t <- 1- pgeom(t-1, p_mem)
+
+# P(X >= s + t | X >= s) = P(X >= s + t) / P(X >= s)
+prob_condicional <- prob_s_t / prob_s
+
+cat("Demostración de la Propiedad de Falta de Memoria:\n")
+cat("Parámetros: p =", p_mem, ", s =", s, ", t =", t, "\n\n")
+cat("P(X  ≥", s+t, ") =", round(prob_s_t, 6), "\n")
+cat("P(X  ≥", s, ") =", round(prob_s, 6), "\n")
+cat("P(X  ≥", t, ") =", round(prob_t, 6), "\n\n")
+cat("P(X  ≥", s+t, "| X  ≥", s, ") =", round(prob_condicional, 6), "\n")
+cat("P(X  ≥", t, ") =", round(prob_t, 6), "\n\n")
+cat("¿Son iguales?", abs(prob_condicional - prob_t) < 1e-10, "\n")
+```
+
+### Función de Supervivencia
+
+La función de supervivencia $S(k)$ representa la probabilidad de que el número de fracasos antes de obtener el primer éxito sea mayor que $k$:
+
+$$S(k) = P(X > k) = (1-p)^{(k+1)}$$
+
+**Visualización de la Función de Supervivencia**
+
+```{r}
+#| label: funcion-supervivencia
+#| fig-cap: "Función de Supervivencia de la distribución geométrica"
+# Diferentes valores de p
+p_surv <- c(0.2, 0.4, 0.6, 0.8)
+k_surv <- 0:15
+
+# Crear data frame
+supervivencia_data <- data.frame()
+for(p in p_surv) {
+  surv_vals <- (1 - p)^(k_surv+1)
+  temp_data <- data.frame(
+    p_label = paste("p =", p),
+    k = k_surv,
+    supervivencia = surv_vals
+  )
+  supervivencia_data <- rbind(supervivencia_data, temp_data)
+}
+
+ggplot(supervivencia_data, aes(x = k, y = supervivencia, color = p_label)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Función de Supervivencia: P(X > k)",
+       x = "k (número de ensayos antes del primer éxito)",
+       y = "Probabilidad de Supervivencia",
+       color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+```
+
+## Ejemplos Aplicados
+
+::: {#exm-geom_calidad}
+**Control de Calidad Industrial**
+
+Una máquina produce piezas defectuosas con probabilidad 0.05. ¿Cuántas piezas debemos inspeccionar antes encontrar la primera defectuosa?
+
+```{r}
+#| label: control-calidad-geometrica
+# Parámetros
+p_defecto_geom <- 0.05
+
+# Parámetros estadísticos
+media_defecto <- (1-p_defecto_geom) / p_defecto_geom
+varianza_defecto <- (1 - p_defecto_geom) / (p_defecto_geom^2)
+desv_std_defecto <- sqrt(varianza_defecto)
+
+cat("Control de Calidad - Primera pieza defectuosa:\n")
+cat("Probabilidad de defecto por pieza:", p_defecto_geom, "\n")
+cat("Número esperado de inspecciones:", media_defecto, "\n")
+cat("Desviación estándar:", round(desv_std_defecto, 2), "\n\n")
+
+# Probabilidades específicas
+k_calidad <- 0:50
+prob_calidad <- dgeom(k_calidad, p_defecto_geom)
+
+# Preguntas de interés
+prob_primera_10 <- sum(prob_calidad[1:10])
+prob_mas_20 <- 1 - sum(prob_calidad[1:20])
+prob_entre_10_30 <- sum(prob_calidad[10:30])
+
+cat("Probabilidades de interés:\n")
+cat("P(primera defectuosa en ≤ 10 inspecciones):", round(prob_primera_10, 4), "\n")
+cat("P(primera defectuosa en > 20 inspecciones):", round(prob_mas_20, 4), "\n")
+cat("P(primera defectuosa entre 10 y 30 inspecciones):", round(prob_entre_10_30, 4), "\n")
+
+
+
+# Visualización
+calidad_data <- data.frame(
+  k = k_calidad[1:40],
+  probabilidad = prob_calidad[1:40]
+)
+
+ggplot(calidad_data, aes(x = k, y = probabilidad)) +
+  geom_col(fill = "darkgreen", alpha = 0.7, width = 0.8) +
+  geom_vline(xintercept = media_defecto, color = "red", linetype = "dashed", size = 1) +
+  annotate("text", x = media_defecto + 5, y = max(prob_calidad) * 0.8, 
+           label = paste("E(X) =", media_defecto), color = "red") +
+  labs(title = "Control de Calidad: Primera Pieza Defectuosa",
+       subtitle = paste("Geométrica(", p_defecto_geom, ")"),
+       x = "Número de Inspecciones",
+       y = "Probabilidad") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+:::
+
+## Simulación: Validación de propiedades teóricas
+
+```{r}
+#| label: simulacion-geometrica
+set.seed(123)
+p_sim <- 0.25
+n_sim <- 10000
+
+# Generar datos geométricos 
+datos_geom <- rgeom(n_sim, p_sim) 
+
+# Estadísticas observadas
+media_obs <- mean(datos_geom)
+var_obs <- var(datos_geom)
+desv_obs <- sd(datos_geom)
+
+# Valores teóricos
+media_teo <- (1-p_sim) / p_sim
+var_teo <- (1 - p_sim) / (p_sim^2)
+desv_teo <- sqrt(var_teo)
+
+cat("Simulación Geométrica (p =", p_sim, "):\n")
+cat("Simulaciones:", n_sim, "\n\n")
+cat("Media teórica:", media_teo, "| Media observada:", round(media_obs, 4), "\n")
+cat("Varianza teórica:", var_teo, "| Varianza observada:", round(var_obs, 4), "\n")
+cat("Desv. Std teórica:", round(desv_teo, 4), "| Desv. Std observada:", round(desv_obs, 4), "\n")
+
+# Comparar distribuciones
+freq_obs <- table(datos_geom[datos_geom <= 20]) / n_sim
+k_comp <- as.numeric(names(freq_obs))
+prob_teo <- dgeom(k_comp, p_sim)
+
+comparacion_sim <- data.frame(
+  k = k_comp,
+  Freq_Observada = as.numeric(freq_obs),
+  Prob_Teorica = prob_teo,
+  Diferencia = abs(as.numeric(freq_obs) - prob_teo)
+)
+
+kable(head(comparacion_sim, 12), 
+      caption = "Comparación frecuencias observadas vs probabilidades teóricas",
+      digits = 4,
+      col.names = c("k", "Freq. Observada", "Prob. Teórica", "Diferencia")) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## Ejercicios Propuestos
+
+::: {#exr-geom_1}
+Se lanza una moneda hasta obtener la primera cara.
+```{r}
+
+set.seed(123)
+
+
+p_cara <- 0.5  # Probabilidad de cara (éxito)
+n_sim <- 10000 # Número de simulaciones
+
+
+cat("Parámetros:\n")
+cat("- Probabilidad de cara (éxito): p =", p_cara, "\n")
+cat("- Simulaciones: n =", n_sim, "\n\n")
+
+
+prob_exactamente_5 <- dgeom(4, prob = p_cara)  # Nota: dgeom(k) = P(X = k+1)
+cat("a) PROBABILIDAD DE EXACTAMENTE 5 LANZAMIENTOS:\n")
+cat("   P(X = 5) =", round(prob_exactamente_5, 4), "\n")
+
+
+lanzamientos_hasta_cara <- rgeom(n_sim, prob = p_cara) + 1 
+prob_sim_5 <- mean(lanzamientos_hasta_cara == 5)
+cat("   Simulación: P(X = 5) ≈", round(prob_sim_5, 4), "\n")
+cat("   Diferencia:", round(abs(prob_exactamente_5 - prob_sim_5), 6), "\n\n")
+
+
+prob_mas_de_3 <- 1 - pgeom(2, prob = p_cara)  # P(X > 3) = 1 - P(X ≤ 3)
+cat("b) PROBABILIDAD DE MÁS DE 3 LANZAMIENTOS:\n")
+cat("   P(X > 3) =", round(prob_mas_de_3, 4), "\n")
+
+
+prob_sim_mas_3 <- mean(lanzamientos_hasta_cara > 3)
+cat("   Simulación: P(X > 3) ≈", round(prob_sim_mas_3, 4), "\n")
+cat("   Diferencia:", round(abs(prob_mas_de_3 - prob_sim_mas_3), 6), "\n\n")
+
+
+media_teorica <- 1 / p_cara
+varianza_teorica <- (1 - p_cara) / (p_cara^2)
+cat("c) MEDIA Y VARIANZA TEÓRICAS:\n")
+cat("   Media teórica: E[X] = 1/p =", round(media_teorica, 4), "\n")
+cat("   Varianza teórica: Var[X] = (1-p)/p² =", round(varianza_teorica, 4), "\n")
+
+
+media_sim <- mean(lanzamientos_hasta_cara)
+varianza_sim <- var(lanzamientos_hasta_cara)
+cat("   Media simulada:", round(media_sim, 4), "\n")
+cat("   Varianza simulada:", round(varianza_sim, 4), "\n")
+cat("   Diferencia en media:", round(abs(media_teorica - media_sim), 6), "\n")
+cat("   Diferencia en varianza:", round(abs(varianza_teorica - varianza_sim), 6), "\n\n")
+
+
+cat("ANÁLISIS ADICIONAL:\n")
+
+
+prob_al_menos_2 <- 1 - pgeom(0, prob = p_cara)
+cat("• P(X ≥ 2) =", round(prob_al_menos_2, 4), "\n")
+
+
+prob_entre_2_6 <- pgeom(5, prob = p_cara) - pgeom(0, prob = p_cara)
+cat("• P(2 ≤ X ≤ 6) =", round(prob_entre_2_6, 4), "\n")
+
+
+prob_sim_al_menos_2 <- mean(lanzamientos_hasta_cara >= 2)
+prob_sim_entre_2_6 <- mean(lanzamientos_hasta_cara >= 2 & lanzamientos_hasta_cara <= 6)
+
+cat("• Simulación P(X ≥ 2) ≈", round(prob_sim_al_menos_2, 4), "\n")
+cat("• Simulación P(2 ≤ X ≤ 6) ≈", round(prob_sim_entre_2_6, 4), "\n\n")
+
+
+cat("DISTRIBUCIÓN DE PROBABILIDAD (primeros 10 valores):\n")
+k_vals <- 1:10
+prob_teoricas <- dgeom(k_vals - 1, prob = p_cara)  # dgeom(k) = P(X = k+1)
+prob_simuladas <- sapply(k_vals, function(x) mean(lanzamientos_hasta_cara == x))
+
+distribucion <- data.frame(
+  Lanzamientos = k_vals,
+  Prob_Teorica = round(prob_teoricas, 4),
+  Prob_Simulada = round(prob_simuladas, 4),
+  Diferencia = round(abs(prob_teoricas - prob_simuladas), 6)
+)
+
+print(distribucion)
+
+
+library(ggplot2)
+
+df_grafico <- data.frame(
+  Lanzamientos = rep(k_vals, 2),
+  Probabilidad = c(prob_teoricas, prob_simuladas),
+  Tipo = rep(c("Teórica", "Simulada"), each = length(k_vals))
+)
+
+grafico <- ggplot(df_grafico, aes(x = Lanzamientos, y = Probabilidad, fill = Tipo)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Distribución Geométrica - Lanzamientos hasta primera cara",
+       subtitle = paste("p =", p_cara, "| Simulaciones:", n_sim),
+       x = "Número de lanzamientos",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Teórica" = "#E74C3C", "Simulada" = "#3498DB")) +
+  scale_x_continuous(breaks = k_vals) +
+  theme(legend.position = "top")
+
+print(grafico)
+
+
+```
+
+
+-   
+
+    a)  ¿Cuál es la probabilidad de necesitar exactamente 5 lanzamientos?
+
+-   
+
+    b)  ¿Cuál es la probabilidad de necesitar más de 3 lanzamientos?
+
+-   
+
+    c)  Calcule la media y varianza del número de lanzamientos.
+:::
+
+::: {#exr-geom_2}
+Un jugador de básquetbol tiene 70% de probabilidad de anotar un tiro libre.
+```{r}
+
+set.seed(123)
+
+
+p_anotar <- 0.7
+n_sim <- 10000   
+
+
+
+
+
+prob_tercer_intento <- dgeom(2, prob = p_anotar)  # P(X = 3)
+cat("a) PROBABILIDAD DE ANOTAR EN EL TERCER INTENTO POR PRIMERA VEZ:\n")
+cat("   P(X = 3) =", round(prob_tercer_intento, 4), "\n")
+
+
+intentos_hasta_anotar <- rgeom(n_sim, prob = p_anotar) + 1
+prob_sim_tercer <- mean(intentos_hasta_anotar == 3)
+cat("   Simulación: P(X = 3) ≈", round(prob_sim_tercer, 4), "\n")
+cat("   Diferencia:", round(abs(prob_tercer_intento - prob_sim_tercer), 6), "\n\n")
+
+
+media_teorica <- 1 / p_anotar
+cat("b) NÚMERO ESPERADO DE INTENTOS:\n")
+cat("   E[X] = 1/p =", round(media_teorica, 4), "\n")
+
+media_sim <- mean(intentos_hasta_anotar)
+cat("   Simulación: E[X] ≈", round(media_sim, 4), "\n")
+cat("   Diferencia:", round(abs(media_teorica - media_sim), 6), "\n\n")
+
+
+prob_entre_2_5 <- pgeom(4, prob = p_anotar) - pgeom(0, prob = p_anotar)  # P(2 ≤ X ≤ 5)
+cat("c) PROBABILIDAD DE NECESITAR ENTRE 2 Y 5 INTENTOS:\n")
+cat("   P(2 ≤ X ≤ 5) =", round(prob_entre_2_5, 4), "\n")
+
+prob_sim_entre_2_5 <- mean(intentos_hasta_anotar >= 2 & intentos_hasta_anotar <= 5)
+cat("   Simulación: P(2 ≤ X ≤ 5) ≈", round(prob_sim_entre_2_5, 4), "\n")
+cat("   Diferencia:", round(abs(prob_entre_2_5 - prob_sim_entre_2_5), 6), "\n\n")
+
+
+library(knitr)
+library(kableExtra)
+
+
+k_tiros <- 0:9
+prob_geometrica <- dgeom(k_tiros, p_anotar)
+prob_acumulada <- pgeom(k_tiros, p_anotar)
+
+
+geometrica_tiros <- data.frame(
+    Ensayo = k_tiros + 1,  
+    Probabilidad = prob_geometrica,
+    Prob_Acumulada = prob_acumulada
+)
+
+cat("TABLA DE DISTRIBUCIÓN GEOMÉTRICA:\n")
+kable(geometrica_tiros,
+    caption = "Distribución Geométrica - Primer tiro anotado (p = 0.7)",
+    digits = 4,
+    col.names = c("Intento", "P(X = x)", "P(X ≤ x)")) %>%
+  kable_styling(bootstrap_options = "striped")
+
+
+cat("\nANÁLISIS ADICIONAL:\n")
+
+
+prob_primer_intento <- dgeom(0, prob = p_anotar)
+cat("• P(anotar en el 1er intento) =", round(prob_primer_intento, 4), "\n")
+
+
+prob_mas_3 <- 1 - pgeom(2, prob = p_anotar)
+cat("• P(X > 3) =", round(prob_mas_3, 4), "\n")
+
+
+varianza_teorica <- (1 - p_anotar) / (p_anotar^2)
+cat("• Varianza teórica: Var[X] =", round(varianza_teorica, 4), "\n")
+
+varianza_sim <- var(intentos_hasta_anotar)
+cat("• Varianza simulada:", round(varianza_sim, 4), "\n")
+
+
+
+
+df_grafico <- data.frame(
+    Intentos = 1:8,
+    Probabilidad = dgeom(0:7, prob = p_anotar)
+)
+
+grafico <- ggplot(df_grafico, aes(x = Intentos, y = Probabilidad)) +
+    geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+    geom_text(aes(label = round(Probabilidad, 3)), vjust = -0.5, size = 3) +
+    labs(title = "Distribución Geométrica - Intentos hasta anotar",
+         subtitle = paste("Jugador con p =", p_anotar, "de anotar"),
+         x = "Número de intentos",
+         y = "Probabilidad") +
+    theme_minimal() +
+    scale_x_continuous(breaks = 1:8) +
+    ylim(0, max(df_grafico$Probabilidad) * 1.1)
+
+print(grafico)
+```
+
+-   
+
+    a)  ¿Cuál es la probabilidad de que anote en el tercer intento por primera vez?
+
+-   
+
+    b)  ¿Cuántos intentos se espera que necesite para anotar?
+
+-   
+
+    c)  ¿Cuál es la probabilidad de necesitar entre 2 y 5 intentos?
+:::
+
+::: {#exr-geom_3}
+Una máquina tiene probabilidad 0.02 de producir una pieza defectuosa.
+```{r}
+
+set.seed(123)
+
+
+p_defectuosa <- 0.02  
+n_sim <- 10000    
+
+
+
+
+media_teorica <- 1 / p_defectuosa
+cat("a) NÚMERO ESPERADO DE INSPECCIONES:\n")
+cat("   E[X] = 1/p =", round(media_teorica, 4), "\n")
+
+
+inspecciones_hasta_defecto <- rgeom(n_sim, prob = p_defectuosa) + 1
+media_sim <- mean(inspecciones_hasta_defecto)
+cat("   Simulación: E[X] ≈", round(media_sim, 4), "\n")
+cat("   Diferencia:", round(abs(media_teorica - media_sim), 6), "\n\n")
+
+
+prob_despues_100 <- 1 - pgeom(99, prob = p_defectuosa)  # P(X > 100)
+cat("b) PROBABILIDAD DE PRIMERA DEFECTUOSA DESPUÉS DE LA PIEZA 100:\n")
+cat("   P(X > 100) =", round(prob_despues_100, 6), "\n")
+
+prob_sim_despues_100 <- mean(inspecciones_hasta_defecto > 100)
+cat("   Simulación: P(X > 100) ≈", round(prob_sim_despues_100, 6), "\n")
+cat("   Diferencia:", round(abs(prob_despues_100 - prob_sim_despues_100), 8), "\n\n")
+
+
+
+
+
+m <- 50
+n <- 30
+
+
+prob_cond_teorica <- (1 - pgeom(m + n - 1, prob = p_defectuosa)) / (1 - pgeom(m - 1, prob = p_defectuosa))
+prob_incond_teorica <- 1 - pgeom(n - 1, prob = p_defectuosa)
+
+cat("   Para m =", m, "y n =", n, ":\n")
+cat("   P(X >", m+n, "| X >", m, ") =", round(prob_cond_teorica, 6), "\n")
+cat("   P(X >", n, ") =", round(prob_incond_teorica, 6), "\n")
+cat("   ¿Son iguales?", ifelse(abs(prob_cond_teorica - prob_incond_teorica) < 1e-10, "SÍ ✓", "NO"), "\n")
+
+
+eventos_cond <- inspecciones_hasta_defecto[inspecciones_hasta_defecto > m]
+prob_cond_sim <- mean(eventos_cond > m + n)
+prob_incond_sim <- mean(inspecciones_hasta_defecto > n)
+
+cat("   Simulación - P(X >", m+n, "| X >", m, ") ≈", round(prob_cond_sim, 6), "\n")
+cat("   Simulación - P(X >", n, ") ≈", round(prob_incond_sim, 6), "\n")
+cat("   Diferencia en simulación:", round(abs(prob_cond_sim - prob_incond_sim), 6), "\n\n")
+
+
+k_inspecciones <- c(1, 10, 25, 50, 75, 100, 150, 200)
+prob_individual <- dgeom(k_inspecciones - 1, p_defectuosa)
+prob_acumulada <- pgeom(k_inspecciones - 1, p_defectuosa)
+prob_supervivencia <- 1 - prob_acumulada
+
+
+geometrica_inspecciones <- data.frame(
+    Inspeccion = k_inspecciones,
+    P_X_igual = round(prob_individual, 6),
+    P_X_menor_igual = round(prob_acumulada, 6),
+    P_X_mayor = round(prob_supervivencia, 6)
+)
+
+cat("TABLA DE DISTRIBUCIÓN GEOMÉTRICA - PUNTOS CLAVE:\n")
+kable(geometrica_inspecciones,
+    caption = "Distribución Geométrica - Primera pieza defectuosa (p = 0.02)",
+    col.names = c("Inspección", "P(X = x)", "P(X ≤ x)", "P(X > x)")) %>%
+  kable_styling(bootstrap_options = "striped")
+
+
+cat("\nANÁLISIS ADICIONAL:\n")
+
+
+prob_primeras_10 <- pgeom(9, prob = p_defectuosa)
+cat("• P(encontrar defectuosa en primeras 10 inspecciones) =", round(prob_primeras_10, 4), "\n")
+
+
+percentiles <- qgeom(c(0.25, 0.5, 0.75, 0.9, 0.95), prob = p_defectuosa) + 1
+cat("• Percentil 25%:", percentiles[1], "inspecciones\n")
+cat("• Mediana (50%):", percentiles[2], "inspecciones\n")
+cat("• Percentil 75%:", percentiles[3], "inspecciones\n")
+cat("• Percentil 90%:", percentiles[4], "inspecciones\n")
+cat("• Percentil 95%:", percentiles[5], "inspecciones\n")
+
+
+
+k_grafico <- 1:200
+prob_grafico <- dgeom(k_grafico - 1, prob = p_defectuosa)
+
+df_grafico <- data.frame(
+    Inspecciones = k_grafico,
+    Probabilidad = prob_grafico
+)
+
+grafico <- ggplot(df_grafico, aes(x = Inspecciones, y = Probabilidad)) +
+    geom_line(color = "steelblue", linewidth = 0.8) +
+    geom_area(fill = "steelblue", alpha = 0.3) +
+    labs(title = "Distribución Geométrica - Inspecciones hasta primera pieza defectuosa",
+         subtitle = paste("p =", p_defectuosa, "| Media =", round(media_teorica, 2), "inspecciones"),
+         x = "Número de inspecciones",
+         y = "Probabilidad P(X = x)") +
+    theme_minimal() +
+    scale_x_continuous(breaks = seq(0, 200, 25)) +
+    ylim(0, max(prob_grafico) * 1.1) +
+    geom_vline(xintercept = media_teorica, linetype = "dashed", color = "red") +
+    annotate("text", x = media_teorica + 15, y = max(prob_grafico) * 0.9, 
+             label = paste("Media =", round(media_teorica, 2)), color = "red")
+
+print(grafico)
+```
+
+
+-   
+
+    a)  Si se inspeccionan las piezas hasta encontrar la primera defectuosa, ¿cuál es el número esperado de inspecciones?
+
+-   
+
+    b)  ¿Cuál es la probabilidad de que la primera pieza defectuosa aparezca después de la pieza número 100?
+
+-   
+
+    c)  Demuestre la propiedad de falta de memoria para este problema.
+:::
+::::::::
