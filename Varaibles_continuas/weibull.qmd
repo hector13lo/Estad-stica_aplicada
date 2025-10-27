@@ -1,0 +1,278 @@
+---
+title: "Distribucion Weibull"
+author: Héctor Eduardo Muñiz Navarro
+format: html
+editor: visual
+---
+
+# Distribución de Weibull
+
+La distribución de Weibull es una distribución versátil que se puede utilizar para modelar una amplia gama de aplicaciones en ingeniería, investigación médica, control de calidad, finanzas y climatología. Por ejemplo, la distribución se utiliza frecuentemente con análisis de fiabilidad para modelar datos de tiempo antes de falla. La distribución de Weibull también se utiliza para modelar datos asimétricos del proceso en el análisis de capacidad.
+
+**Efecto del parámetro de forma**
+
+El parámetro de forma describe la manera en que se distribuyen los datos. Una forma de 3 se aproxima a una curva normal. Un valor de forma bajo, por ejemplo 1, da una curva con asimetría hacia la derecha. Un valor de forma alto, por ejemplo 10, da una curva con asimetría hacia la izquierda.
+
+## EJERCICIO 1: Vida Útil de Componentes Electrónicos
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(plotly)
+library(viridis)
+library(RColorBrewer)
+library(kableExtra)
+library(knitr)
+```
+
+\
+Un fabricante de componentes electrónicos determina que la vida útil de sus resistencias sigue una distribución de Weibull con parámetro de forma β = 1.5 y parámetro de escala η = 8000 horas. Calcule:
+
+a\) La probabilidad de que una resistencia falle antes de 5000 horas\
+b) El tiempo en el cual el 10% de las resistencias habrán fallado\
+c) La probabilidad de que una resistencia dure más de 10000 horas\
+d) Simule 1000 vidas útiles y compare con la distribución teórica
+
+```{r}
+beta <- 1.5   
+eta <- 8000    
+n_sim <- 1000  
+
+
+
+
+prob_5000 <- pweibull(5000, shape = beta, scale = eta)
+cat("a) PROBABILIDAD DE FALLA ANTES DE 5000 HORAS:\n")
+cat("   P(T < 5000) =", round(prob_5000, 4), "(", round(prob_5000*100, 2), "%)\n\n")
+
+
+tiempo_10p <- qweibull(0.10, shape = beta, scale = eta)
+cat("b) TIEMPO PARA 10% DE FALLAS:\n")
+cat("   P(T < t) = 0.10 => t =", round(tiempo_10p, 2), "horas\n\n")
+
+
+prob_10000 <- 1 - pweibull(10000, shape = beta, scale = eta)
+cat("c) PROBABILIDAD DE DURAR MÁS DE 10000 HORAS:\n")
+cat("   P(T > 10000) =", round(prob_10000, 4), "(", round(prob_10000*100, 2), "%)\n\n")
+
+
+cat("d) SIMULACIÓN DE 1000 VIDAS ÚTILES:\n")
+vidas_utiles <- rweibull(n_sim, shape = beta, scale = eta)
+
+
+media_sim <- mean(vidas_utiles)
+mediana_sim <- median(vidas_utiles)
+sd_sim <- sd(vidas_utiles)
+
+cat("   Media simulada:", round(media_sim, 2), "horas\n")
+cat("   Mediana simulada:", round(mediana_sim, 2), "horas\n")
+cat("   Desviación estándar:", round(sd_sim, 2), "horas\n")
+
+
+media_teorica <- eta * gamma(1 + 1/beta)
+varianza_teorica <- eta^2 * (gamma(1 + 2/beta) - (gamma(1 + 1/beta))^2)
+
+cat("\n   VALORES TEÓRICOS:\n")
+cat("   Media teórica:", round(media_teorica, 2), "horas\n")
+cat("   Varianza teórica:", round(varianza_teorica, 2), "horas²\n")
+cat("   Diferencia en medias:", round(abs(media_teorica - media_sim), 2), "horas\n")
+
+
+horas <- seq(0, 15000, length.out = 200)
+densidad_teorica <- dweibull(horas, shape = beta, scale = eta)
+
+df_comparacion <- data.frame(
+  Horas = horas,
+  Densidad_Teorica = densidad_teorica
+)
+
+grafico1 <- ggplot() +
+  geom_line(data = df_comparacion, aes(x = Horas, y = Densidad_Teorica), 
+            color = "blue", size = 1.2, linetype = "dashed") +
+  geom_histogram(data = data.frame(Vidas = vidas_utiles), 
+                 aes(x = Vidas, y = ..density..), 
+                 fill = "lightblue", alpha = 0.6, bins = 30) +
+  geom_vline(xintercept = 5000, color = "red", linetype = "dotted", size = 1) +
+  geom_vline(xintercept = tiempo_10p, color = "green", linetype = "dotted", size = 1) +
+  geom_vline(xintercept = 10000, color = "orange", linetype = "dotted", size = 1) +
+  annotate("text", x = 5000, y = max(densidad_teorica)*0.9, 
+           label = "5000h", color = "red", size = 3) +
+  annotate("text", x = tiempo_10p, y = max(densidad_teorica)*0.8, 
+           label = "10% fallas", color = "green", size = 3) +
+  annotate("text", x = 10000, y = max(densidad_teorica)*0.7, 
+           label = "10000h", color = "orange", size = 3) +
+  labs(title = "Distribución de Weibull - Vida Útil de Resistencias",
+       subtitle = paste("β =", beta, ", η =", eta, "horas - Línea azul: teórica, Histograma: simulación"),
+       x = "Tiempo (horas)",
+       y = "Densidad de probabilidad") +
+  theme_minimal()
+
+
+supervivencia_teorica <- 1 - pweibull(horas, shape = beta, scale = eta)
+
+df_supervivencia <- data.frame(
+  Horas = horas,
+  Probabilidad_Supervivencia = supervivencia_teorica
+)
+
+grafico2 <- ggplot(df_supervivencia, aes(x = Horas, y = Probabilidad_Supervivencia)) +
+  geom_line(color = "purple", size = 1.2) +
+  geom_hline(yintercept = 0.90, linetype = "dashed", color = "green") +
+  geom_vline(xintercept = tiempo_10p, linetype = "dashed", color = "green") +
+  annotate("text", x = tiempo_10p, y = 0.5, 
+           label = paste("B10 =", round(tiempo_10p, 0), "horas"), 
+           color = "green", size = 4) +
+  labs(title = "Función de Supervivencia - Weibull",
+       subtitle = "Probabilidad de que el componente aún funcione",
+       x = "Tiempo (horas)",
+       y = "Probabilidad de supervivencia") +
+  theme_minimal()
+
+```
+
+## EJERCICIO 2: Análisis de Fallas en Motores
+
+\
+El departamento de mantenimiento analiza los tiempos entre fallas de motores industriales. Los datos siguen una distribución de Weibull con β = 2.2 y η = 1200 horas. Determine:
+
+a\) La probabilidad de que un motor falle entre 800 y 1500 horas\
+b) El tiempo medio entre fallas (MTBF)\
+c) La mediana de la distribución\
+d) El percentil 95 de la distribución\
+e) Genere un análisis de confiabilidad
+
+```{r}
+beta <- 2.2    
+eta <- 1200   
+n_sim <- 2000 
+
+
+prob_800_1500 <- pweibull(1500, shape = beta, scale = eta) - pweibull(800, shape = beta, scale = eta)
+cat("a) PROBABILIDAD DE FALLA ENTRE 800 Y 1500 HORAS:\n")
+cat("   P(800 < T < 1500) =", round(prob_800_1500, 4), "(", round(prob_800_1500*100, 2), "%)\n\n")
+ 
+mtbf <- eta * gamma(1 + 1/beta)
+cat("b) TIEMPO MEDIO ENTRE FALLAS (MTBF):\n")
+cat("   MTBF = η × Γ(1 + 1/β) =", round(eta, 2), "× Γ(1 + 1/", beta, ")\n")
+cat("   MTBF =", round(mtbf, 2), "horas\n\n")
+
+
+mediana <- qweibull(0.5, shape = beta, scale = eta)
+cat("c) MEDIANA (B50 - 50% de fallas):\n")
+cat("   P(T < t) = 0.50 => t =", round(mediana, 2), "horas\n\n")
+
+
+percentil_95 <- qweibull(0.95, shape = beta, scale = eta)
+cat("d) PERCENTIL 95 (B95 - 95% de fallas):\n")
+cat("   P(T < t) = 0.95 => t =", round(percentil_95, 2), "horas\n\n")
+
+
+cat("e) ANÁLISIS DE CONFIABILIDAD:\n")
+confiabilidad_1000 <- 1 - pweibull(1000, shape = beta, scale = eta)
+tasa_falla_1000 <- (beta/eta) * (1000/eta)^(beta-1)
+
+cat("   Confiabilidad a 1000 horas: R(1000) =", round(confiabilidad_1000, 4), 
+    "(", round(confiabilidad_1000*100, 2), "%)\n")
+cat("   Tasa de falla a 1000 horas: h(1000) =", round(tasa_falla_1000, 6), "fallas/hora\n\n")
+
+
+tiempos_falla <- rweibull(n_sim, shape = beta, scale = eta)
+
+
+
+
+horas <- seq(0, 2500, length.out = 300)
+densidad <- dweibull(horas, shape = beta, scale = eta)
+acumulada <- pweibull(horas, shape = beta, scale = eta)
+
+df_principal <- data.frame(
+  Horas = horas,
+  Densidad = densidad,
+  Acumulada = acumulada
+)
+
+grafico_densidad <- ggplot(df_principal, aes(x = Horas, y = Densidad)) +
+  geom_line(color = "red", size = 1.2) +
+  geom_area(fill = "red", alpha = 0.2) +
+  geom_vline(xintercept = c(800, 1500), linetype = "dashed", color = "blue") +
+  annotate("rect", xmin = 800, xmax = 1500, ymin = 0, ymax = max(densidad),
+           alpha = 0.3, fill = "yellow") +
+  labs(title = "Función de Densidad de Weibull",
+       subtitle = paste("Área amarilla: P(800 < T < 1500) =", round(prob_800_1500*100, 1), "%"),
+       x = "Tiempo entre fallas (horas)",
+       y = "Densidad") +
+  theme_minimal()
+
+grafico_acumulada <- ggplot(df_principal, aes(x = Horas, y = Acumulada)) +
+  geom_line(color = "blue", size = 1.2) +
+  geom_hline(yintercept = c(0.5, 0.95), linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = c(mediana, percentil_95), linetype = "dashed", color = "gray") +
+  annotate("text", x = mediana, y = 0.1, label = paste("B50 =", round(mediana, 0)), 
+           color = "blue", size = 3) +
+  annotate("text", x = percentil_95, y = 0.8, label = paste("B95 =", round(percentil_95, 0)), 
+           color = "blue", size = 3) +
+  labs(title = "Función de Distribución Acumulada",
+       x = "Tiempo entre fallas (horas)",
+       y = "Probabilidad acumulada") +
+  theme_minimal()
+
+tasa_falla <- (beta/eta) * (horas/eta)^(beta-1)
+
+df_tasa <- data.frame(
+  Horas = horas,
+  Tasa_Falla = tasa_falla
+)
+
+grafico_tasa <- ggplot(df_tasa, aes(x = Horas, y = Tasa_Falla)) +
+  geom_line(color = "darkgreen", size = 1.2) +
+  geom_vline(xintercept = 1000, linetype = "dashed", color = "orange") +
+  annotate("text", x = 1000, y = max(tasa_falla)*0.8, 
+           label = paste("h(1000) =", round(tasa_falla_1000, 4)), 
+           color = "orange", size = 3) +
+  labs(title = "Función de Tasa de Falla",
+       subtitle = "Weibull con β > 1 tiene tasa de falla creciente",
+       x = "Tiempo (horas)",
+       y = "Tasa de falla") +
+  theme_minimal()
+
+
+datos_simulados <- rweibull(100, shape = beta, scale = eta)
+qq_weibull <- function(x) {
+  n <- length(x)
+  teóricos <- qweibull(ppoints(n), shape = beta, scale = eta)
+  return(teóricos)
+}
+
+df_qq <- data.frame(
+  Teóricos = qq_weibull(datos_simulados),
+  Observados = sort(datos_simulados)
+)
+
+grafico_qq <- ggplot(df_qq, aes(x = Teóricos, y = Observados)) +
+  geom_point(color = "purple", alpha = 0.6) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Gráfico Q-Q Weibull",
+       subtitle = "Verificación del ajuste de la distribución",
+       x = "Cuantiles teóricos",
+       y = "Cuantiles observados") +
+  theme_minimal()
+
+
+print(grafico_densidad)
+print(grafico_acumulada)
+print(grafico_tasa)
+print(grafico_qq)
+
+
+cat("RESUMEN ESTADÍSTICO - DISTRIBUCIÓN DE WEIBULL\n")
+cat("=============================================\n")
+cat("Parámetro de forma (β):", beta, "\n")
+cat("   β < 1: Tasa de falla decreciente (mortalidad infantil)\n")
+cat("   β = 1: Tasa de falla constante (distribución exponencial)\n")
+cat("   β > 1: Tasa de falla creciente (envejecimiento/desgaste)\n")
+cat("Parámetro de escala (η):", eta, "horas (vida característica)\n")
+cat("Media (MTBF):", round(mtbf, 2), "horas\n")
+cat("Mediana (B50):", round(mediana, 2), "horas\n")
+cat("Desviación estándar:", round(sqrt(eta^2 * (gamma(1 + 2/beta) - (gamma(1 + 1/beta))^2)), 2), "horas\n")
+```
