@@ -1,0 +1,908 @@
+---
+title: "Proyecto"
+format: html
+editor: visual
+Autores: "Carlos Antonio Reyes Gutiérrez, Amado Mauricio Ortega Sanchez, Arath Nava Calleros, Héctor Eduardo Muñiz Navarro"
+---
+
+## Autores
+
+***"Carlos Antonio Reyes Gutiérrez, Amado Mauricio Ortega Sanchez, Arath Nava Calleros, Héctor Eduardo Muñiz Navarro"***
+
+# “Relación entre el crecimiento económico de México y las variables macroeconómicas clave: deuda externa, exportaciones, reservas internacionales y formación bruta de capital fijo (FBKF)"
+
+## Objetivo General
+Evaluar la relación estadística entre variables económicas macro relevantes y el crecimiento
+económico de México, con base en datos provenientes del INEGI y Banco de México.
+
+## Objetivos Específicos
+1. Describir el comportamiento histórico del PIB, PIB per cápita, deuda externa, exportaciones,
+reservas internacionales y FBKF.
+2. Determinar la distribución estadística que mejor modela cada variable económica.
+3. Estimar los parámetros poblacionales de cada variable utilizando métodos estadísticos (MOM y
+MLE).
+4. Construir intervalos de confianza para los parámetros estimados y evaluar su precisión.
+5. Plantear y realizar pruebas de hipótesis respecto a la relación entre las variables externas y el
+crecimiento económico.
+6. Analizar si las variables externas tienen un efecto significativo en explicar el crecimiento económico
+de México.
+
+## Hipótesis General
+H1: Las variables macroeconómicas deuda externa, exportaciones, reservas internacionales y FBKF
+tienen un efecto estadísticamente significativo en el crecimiento económico de México.
+H0: Estas variables no tienen un efecto estadísticamente significativo en el crecimiento económico.
+
+Datos
+```{r}
+#| code-fold: true
+#| message: false
+#| warning: false
+library(readr)
+datos <- read_csv("./Datos_laffer.csv")
+```
+
+```{r}
+#| code-fold: true
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(RColorBrewer)
+library(sf)          
+library(viridis)     
+library(DT)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(corrplot)    
+library(broom)       
+library(scales)
+library(multcomp)
+library(dplyr)       
+library(gridExtra)
+library(lmtest)
+library(car)
+library(readr)
+library(ggplot2)
+library(strucchange)
+library(MASS)
+```
+
+```{r}
+head(datos)
+```
+
+```{r}
+colnames(datos)
+```
+
+
+```{r}
+summary(datos)
+```
+
+
+
+
+```{r}
+grafico_serie <- function(variable, titulo, unidad = "USD") {
+  ggplot(datos, aes(x = ...1, y = !!sym(variable))) +
+    geom_line(color = "steelblue", size = 1.2) +
+    geom_point(color = "darkblue", size = 1.5) +
+    geom_smooth(method = "loess", se = FALSE, color = "red", linetype = "dashed") +
+    labs(title = titulo,
+         x = "Año",
+         y = paste("Valor (", unidad, ")", sep = "")) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+
+
+p1 <- grafico_serie("PIB", "Evolución del PIB de México", "Billones MXN")
+p2 <- grafico_serie("PIB_PC", "Evolución del PIB per cápita", "Miles MXN")
+p3 <- grafico_serie("Deuda_Externa", "Evolución de la Deuda Externa", "Miles de millones MXN")
+p4 <- grafico_serie("Exportaciones", "Evolución de las Exportaciones", "Miles de millones MXN")
+p5 <- grafico_serie("Reservas_Internacionales", "Reservas Internacionales", "Miles de millones USD")
+p6 <- grafico_serie("FBKF", "Formación Bruta de Capital Fijo (FBKF)", "Miles de millones MXN")
+p7 <- grafico_serie("Balance_fiscal", "Evolución del Balance Fiscal", "Miles de millones MXN")
+
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, ncol = 2)
+
+```
+
+En primer lugar, al observar la Evolución del PIB y el PIB per cápita, se identifica una clara tendencia estocástica creciente a largo plazo. Sin embargo, esta trayectoria no es lineal ni suave, la gráfica revela la alta vulnerabilidad de la economía mexicana ante choques exógenos, destacándose visualmente dos rupturas estructurales profundas correspondientes a la crisis financiera del 2008  y la caída provocada por la pandemia del COVID-19 en 2020. Estos eventos sugieren que la variable dependiente (crecimiento económico) posee una volatilidad que deberá ser considerada al momento de realizar las pruebas de hipótesis.
+
+
+Por el lado de los componentes de la demanda agregada, el comportamiento de las Exportaciones y la Formación Bruta de Capital Fijo (FBKF) ofrece evidencia preliminar que respalda la hipótesis general del trabajo. Las exportaciones muestran una correlación visualmente fuerte y positiva con el producto, actuando como un motor de recuperación, especialmente tras la caída de 2020. Por su parte, la FBKF  exhibe un comportamiento más volátil que el consumo, es notable su estancamiento en el periodo 2015-2019 previo al desplome de 2020, lo cual es relevante dado que la inversión es un determinante crucial para el crecimiento sostenido a largo plazo. La sincronización de estas caídas y recuperaciones con el PIB sugiere una relación estadísticamente significativa.
+
+En cuanto a las variables financieras y de estabilidad, la Deuda Externa y el Balance Fiscal presentan un cambio de régimen evidente alrededor del año 2008. Antes de esta fecha, la deuda se mantenía relativamente estable, pero posteriormente inicia una tendencia de crecimiento acelerado, coincidiendo con un deterioro persistente en el balance fiscal déficit. Esto indica que la deuda a servido para suavizar los choques economicos de las crisis lo que nos ha llevado a caer en un ciclo de endeudamiento. Las reservas muestran que han tenido una tendencia a acumularlas esto para darle estabilidad al peso mexicano.
+
+
+```{r}
+calcular_tasa_crecimiento <- function(x) {
+  c(NA, diff(x) / x[-length(x)] * 100)
+}
+
+datos <- datos %>%
+  mutate(
+    Crecimiento_PIB = calcular_tasa_crecimiento(PIB),
+    Crecimiento_PIB_PC = calcular_tasa_crecimiento(PIB_PC),
+    Crecimiento_Export = calcular_tasa_crecimiento(Exportaciones),
+    Crecimiento_FBKF = calcular_tasa_crecimiento(FBKF),
+    Crecimiento_Balance = calcular_tasa_crecimiento(Balance_fiscal),
+   Crecimiento_Deuda = calcular_tasa_crecimiento(Deuda_Externa)
+  )
+
+ggplot(datos %>% filter(!is.na(Crecimiento_PIB)), aes(x = ...1)) +
+  geom_line(aes(y = Crecimiento_PIB, color = "PIB"), size = 1) +
+  geom_line(aes(y = Crecimiento_PIB_PC, color = "PIB per cápita"), size = 1) +
+  geom_line(aes(y = Crecimiento_Export, color = "Exportaciones"), size = 1) +
+  geom_line(aes(y = Crecimiento_FBKF, color = "FBKF"), size = 1) +
+  geom_line(aes(y = Crecimiento_Balance, color = "Balance fiscal"), size = 1) +
+  geom_line(aes(y = Crecimiento_Deuda, color = "Deuda Externa"), size = 1) +
+  labs(title = "Tasas de Crecimiento Anual (%)",
+       x = "Año",
+       y = "Tasa de Crecimiento (%)",
+       color = "Variable") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray")
+
+variables_interes <- c("PIB", "PIB_PC", "Deuda_Externa", "Exportaciones", 
+                       "Reservas_Internacionales", "FBKF")
+```
+
+```{r}
+calcular_tasa_crecimiento <- function(x) {
+  c(NA, diff(x) / x[-length(x)] * 100)
+}
+
+datos <- datos %>%
+  mutate(
+    Crecimiento_PIB = calcular_tasa_crecimiento(PIB),
+    Crecimiento_PIB_PC = calcular_tasa_crecimiento(PIB_PC),
+    Crecimiento_Export = calcular_tasa_crecimiento(Exportaciones),
+    Crecimiento_FBKF = calcular_tasa_crecimiento(FBKF),
+    Crecimiento_Deuda = calcular_tasa_crecimiento(Deuda_Externa)
+  )
+
+ggplot(datos %>% filter(!is.na(Crecimiento_PIB)), aes(x = ...1)) +
+  geom_line(aes(y = Crecimiento_PIB, color = "PIB"), size = 1) +
+  geom_line(aes(y = Crecimiento_PIB_PC, color = "PIB per cápita"), size = 1) +
+  geom_line(aes(y = Crecimiento_Export, color = "Exportaciones"), size = 1) +
+  geom_line(aes(y = Crecimiento_FBKF, color = "FBKF"), size = 1) +
+  geom_line(aes(y = Crecimiento_Deuda, color = "Deuda Externa"), size = 1) +
+  labs(title = "Tasas de Crecimiento Anual (%)",
+       x = "Año",
+       y = "Tasa de Crecimiento (%)",
+       color = "Variable") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray")
+
+variables_interes <- c("PIB", "PIB_PC", "Deuda_Externa", "Exportaciones", 
+                       "Reservas_Internacionales", "FBKF")
+```
+
+Analizando la gráficas del porcentaje del crecimiento tenemos nos podemos percatar una vez mas de los impactos que han tenido las crisis en la economía mexina han sido catastroficos, se puede visualizar el pico atipico extremo cercano al 200%  durante  la crisis del 2008 hizo que México recurriera a la deuda externa para suavizar el impacto sin embargo no fue la mejor decisión ya que a partir de eso a lo largo del tiempo podemos ver que se ha seguido endeudandose para gnerar crecimiento pero no ha mostrado resultados.
+
+Tambien podemos observar que la Formacion Bruta de  Capital Fijo (FBKF) y las exportaciones muestran una alta sensibilidad al ciclo económico. Particularmente, la inversión (FBKF) y las exportaciones actúan como componentes pro-cíclicos, contrayéndose severamente durante las recesiones y liderando la recuperación posterior.
+
+
+
+```{r}
+variables_interes <- c("PIB", "PIB_PC", "Deuda_Externa", "Exportaciones", 
+                       "Reservas_Internacionales", "FBKF", "Balance_fiscal")
+
+
+correlaciones <- cor(datos[, variables_interes], use = "complete.obs")
+print("Matriz de correlaciones:")
+print(round(correlaciones, 2))
+
+corrplot(correlaciones, method = "color", type = "upper",
+         title = "Correlaciones entre Variables Macroeconómicas",
+         mar = c(0, 0, 2, 0))
+
+```
+En la matriz de correlación se observa que las Exportaciones, las Reservas Internacionales y la Deuda Externa presentan coeficientes de correlación cercanos a la unidad representados en azul intenso, lo cual sugiere, en una primera instancia, que existe una sincronización casi perfecta entre el crecimiento de estas variables y la expansión del producto nacional. Esta evidencia descriptiva respalda preliminarmente la hipótesis general de trabajo ($H_1$), indicando que estas variables macroeconómicas poseen un alto poder predictivo sobre el desempeño económico de México durante el periodo que estamos estudiando.
+
+No obstante,también expone una relación inversa significativa color rojo intenso entre el Balance Fiscal y el resto de las variables de crecimiento. Esto implica que la expansión histórica del PIB y el aumento de la inversión (FBKF) han estado acompañados sistemáticamente por un deterioro en las finanzas públicas mayores déficits.
+
+
+```{r}
+estimacion_mom <- function(x, distribucion = "normal") {
+  n <- length(x)
+  if(distribucion == "normal") {
+    mu <- mean(x)
+    sigma2 <- var(x) * (n-1)/n
+    return(list(mu = mu, sigma2 = sigma2, sigma = sqrt(sigma2)))
+  }
+  if(distribucion == "lognormal") {
+    mu <- mean(log(x))
+    sigma2 <- var(log(x)) * (n-1)/n
+    return(list(mu = mu, sigma2 = sigma2, sigma = sqrt(sigma2)))
+  }
+}
+
+estimacion_mle <- function(x, distribucion = "normal") {
+  if(distribucion == "normal") {
+    mu <- mean(x)
+    sigma2 <- var(x)
+    return(list(mu = mu, sigma2 = sigma2, sigma = sqrt(sigma2)))
+  }
+  if(distribucion == "lognormal") {
+    mu <- mean(log(x))
+    sigma2 <- var(log(x))
+    return(list(mu = mu, sigma2 = sigma2, sigma = sqrt(sigma2)))
+  }
+}
+```
+
+
+##  PIB PER CÁPITA (LOG NORMAL)
+```{r}
+pib_pc_data <- na.omit(datos$PIB_PC)
+
+resultados_pib_pc_mom <- estimacion_mom(pib_pc_data, "lognormal")
+resultados_pib_pc_mle <- estimacion_mle(pib_pc_data, "lognormal")
+
+par(mfrow = c(1, 1))
+hist(pib_pc_data, freq = FALSE, breaks = 15,
+     main = "PIB per cápita - Ajuste Lognormal",
+     xlab = "PIB per cápita", 
+     col = rgb(0.8, 0.8, 0.8, 0.5), 
+     border = "white")
+
+x_seq <- seq(min(pib_pc_data), max(pib_pc_data), length = 200)
+lines(x_seq, dlnorm(x_seq, meanlog = resultados_pib_pc_mom$mu, 
+                    sdlog = resultados_pib_pc_mom$sigma),
+      col = "red", lwd = 2, lty = 1)
+
+lines(x_seq, dlnorm(x_seq, meanlog = resultados_pib_pc_mle$mu, 
+                    sdlog = resultados_pib_pc_mle$sigma),
+      col = "blue", lwd = 2, lty = 2)
+
+legend("topright", legend = c("Datos", "MOM", "MLE"),
+       col = c("gray", "red", "blue"),
+       fill = c(rgb(0.8, 0.8, 0.8, 0.5), NA, NA),
+       lty = c(NA, 1, 2), lwd = 2)
+```
+
+El análisis de la distribución empírica del PIB per cápita, representado mediante el histograma de frecuencias, revela una estructura de datos compleja que se aleja de una simetría perfecta. Se observa una dispersión considerable en el rango de 160,000 a 190,000 pesos, con concentraciones de frecuencia que sugieren la presencia de distintos regímenes económicos a lo largo del tiempo. Las barras del histograma no forman una campana suave y continua, sino que presentan vacíos y picos irregulares, esto es consistente con el análisis de series de tiempo previo, donde identificamos que la economía mexicana ha sufrido choques estructurales como las crisis de 2008 y 2020 que alteran la continuidad de los datos y generan estas irregularidades en la distribución de probabilidad observada.
+
+Para modelar este comportamiento, se seleccionó la Distribución Lognormal, una elección teóricamente robusta para variables económicas monetarias que, por definición, no pueden ser negativas y suelen presentar sesgo a la derecha. En la gráfica se contrastan dos curvas de ajuste: la línea roja sólida correspondiente al Método de Momentos (MOM) y la línea azul punteada correspondiente al Método de Máxima Verosimilitud (MLE). Un hallazgo estadístico fundamental es la convergencia casi perfecta de ambos estimadores, las curvas se superponen de tal manera que son prácticamente indistinguibles. Esto indica que, a pesar de la volatilidad histórica, los parámetros estimados media y varianza logarítmica son consistentes y estables, independientemente del método de inferencia utilizado.
+
+## DEUDA EXTERNA (LOG NORMAL)
+```{r}
+deuda_data <- na.omit(datos$Deuda_Externa)
+
+if(any(deuda_data <= 0)) {
+  deuda_data <- deuda_data + abs(min(deuda_data)) + 0.01
+}
+
+resultados_deuda_mom <- estimacion_mom(deuda_data, "lognormal")
+resultados_deuda_mle <- estimacion_mle(deuda_data, "lognormal")
+
+hist(deuda_data, freq = FALSE, breaks = 15,
+     main = "Deuda Externa - Ajuste Lognormal",
+     xlab = "Deuda Externa", 
+     col = rgb(0.8, 0.8, 0.8, 0.5), 
+     border = "white")
+
+x_seq_deuda <- seq(min(deuda_data), max(deuda_data), length = 200)
+lines(x_seq_deuda, dlnorm(x_seq_deuda, meanlog = resultados_deuda_mom$mu, 
+                          sdlog = resultados_deuda_mom$sigma),
+      col = "red", lwd = 2, lty = 1)
+
+lines(x_seq_deuda, dlnorm(x_seq_deuda, meanlog = resultados_deuda_mle$mu, 
+                          sdlog = resultados_deuda_mle$sigma),
+      col = "blue", lwd = 2, lty = 2)
+
+legend("topright", legend = c("Datos", "MOM", "MLE"),
+       col = c("gray", "red", "blue"),
+       fill = c(rgb(0.8, 0.8, 0.8, 0.5), NA, NA),
+       lty = c(NA, 1, 2), lwd = 2)
+```
+
+El histograma de frecuencias de la Deuda Externa revela una estructura de datos radicalmente distinta a la del PIB per cápita, caracterizada por una fuerte asimetría positiva sesgo a la derecha. Se observa una concentración masiva de observaciones en los niveles bajos de deuda barra gris izquierda, que corresponde históricamente al largo periodo de estabilidad previo a 2008. Posteriormente, los datos se dispersan hacia la derecha alcanzando niveles de hasta 5 billones escala de $10^{12}$, con vacíos notables entre las barras. Estos huecos en el histograma no son errores, sino el reflejo estadístico de los cambios abruptos de política económica: la deuda no creció gradualmente, sino que dio saltos discretos durante las crisis, dejando regiones de valores intermedios sin observaciones frecuentes.
+
+Al aplicar la distribución Lognormal para modelar este comportamiento, se confirma nuevamente la convergencia asintótica entre los estimadores del Método de Momentos (MOM) y de Máxima Verosimilitud (MLE). Ambas curvas roja y azul se superponen con exactitud, lo que valida matemáticamente el cálculo de los parámetros de media y varianza. La elección de la distribución Lognormal es teóricamente adecuada, dado que la deuda es una variable monetaria no negativa con un crecimiento exponencial. La curva intenta capturar la tendencia general asignando la mayor probabilidad a los valores bajos y extendiendo una "cola pesada" hacia la derecha para cubrir los niveles actuales de endeudamiento.
+
+Sin embargo, desde una perspectiva crítica del ajuste, es importante notar que una distribución unimodal suave como la Lognormal enfrenta dificultades para capturar la naturaleza "a saltos" de la deuda mexicana. Si bien los estimadores son consistentes, la varianza estimada es muy alta debido a la dispersión extrema de los datos hacia la cola derecha.
+
+## TABLA COMPARATIVA 
+```{r}
+pib_data <- na.omit(datos$PIB)
+pib_pc_data <- na.omit(datos$PIB_PC)
+deuda_data <- na.omit(datos$Deuda_Externa)
+export_data <- na.omit(datos$Exportaciones)
+reservas_data <- na.omit(datos$Reservas_Internacionales)
+fbkf_data <- na.omit(datos$FBKF)
+balance_data <- na.omit(datos$Balance_fiscal)
+
+if(any(deuda_data <= 0)) {
+  deuda_data <- deuda_data + abs(min(deuda_data)) + 0.01
+}
+
+resultados <- list()
+
+resultados$PIB_mom <- estimacion_mom(pib_data, "normal")
+resultados$PIB_mle <- estimacion_mle(pib_data, "normal")
+
+resultados$PIB_PC_mom <- estimacion_mom(pib_pc_data, "lognormal")
+resultados$PIB_PC_mle <- estimacion_mle(pib_pc_data, "lognormal")
+
+resultados$Deuda_mom <- estimacion_mom(deuda_data, "lognormal")
+resultados$Deuda_mle <- estimacion_mle(deuda_data, "lognormal")
+
+resultados$Export_mom <- estimacion_mom(export_data, "normal")
+resultados$Export_mle <- estimacion_mle(export_data, "normal")
+
+resultados$FBKF_mom <- estimacion_mom(fbkf_data, "normal")
+resultados$FBKF_mle <- estimacion_mle(fbkf_data, "normal")
+
+resultados$Balance_mom <- estimacion_mom(balance_data, "normal")
+resultados$Balance_mle <- estimacion_mle(balance_data, "normal")
+
+tabla_comparativa <- data.frame(
+  Variable = rep(c("PIB", "PIB_PC", "Deuda_Externa", "Exportaciones", "FBKF", "Balance_fiscal"), each = 2),
+  Método = rep(c("MOM", "MLE"), 6),
+  Distribución = rep(c("Normal", "Lognormal", "Lognormal", "Normal", "Normal", "Normal"), each = 2),
+  μ = c(resultados$PIB_mom$mu, resultados$PIB_mle$mu,
+        resultados$PIB_PC_mom$mu, resultados$PIB_PC_mle$mu,
+        resultados$Deuda_mom$mu, resultados$Deuda_mle$mu,
+        resultados$Export_mom$mu, resultados$Export_mle$mu,
+        resultados$FBKF_mom$mu, resultados$FBKF_mle$mu,
+        resultados$Balance_mom$mu, resultados$Balance_mle$mu),
+  σ = c(resultados$PIB_mom$sigma, resultados$PIB_mle$sigma,
+        resultados$PIB_PC_mom$sigma, resultados$PIB_PC_mle$sigma,
+        resultados$Deuda_mom$sigma, resultados$Deuda_mle$sigma,
+        resultados$Export_mom$sigma, resultados$Export_mle$sigma,
+        resultados$FBKF_mom$sigma, resultados$FBKF_mle$sigma,
+        resultados$Balance_mom$sigma, resultados$Balance_mle$sigma)
+)
+
+print(tabla_comparativa)
+```
+
+La tabla de resultados presenta la estimación puntual de los parámetros poblacionales media $\mu$ y desviación estándar $\sigma$ para las variables clave del estudio, contrastando dos metodologías inferenciales distintas: el Método de Momentos (MOM) y el Método de Máxima Verosimilitud (MLE). Un hallazgo transversal y estadísticamente robusto es la notable convergencia entre ambos estimadores. Para todas las variables analizadas, las medias estimadas $\mu$ son idénticas hasta el sexto decimal, y las desviaciones estándar $\sigma$ presentan diferencias marginales. Esta similitud valida la calidad de la muestra y sugiere que, a pesar de la volatilidad económica observada en las gráficas anteriores, los datos contienen información suficiente para que ambos métodos arriben a las mismas conclusiones paramétricas.
+
+
+```{r}
+ic_media_normal <- function(x, confianza = 0.95) {
+  n <- length(x)
+  media <- mean(x)
+  desv <- sd(x)
+  t_valor <- qt(1 - (1 - confianza)/2, df = n-1)
+  
+  lim_inf <- media - t_valor * desv/sqrt(n)
+  lim_sup <- media + t_valor * desv/sqrt(n)
+  
+  return(c(lim_inf, media, lim_sup))
+}
+
+ic_varianza_normal <- function(x, confianza = 0.95) {
+  n <- length(x)
+  s2 <- var(x)
+  chi2_inf <- qchisq(1 - (1 - confianza)/2, df = n-1)
+  chi2_sup <- qchisq((1 - confianza)/2, df = n-1)
+  
+  lim_inf <- ((n-1) * s2) / chi2_inf
+  lim_sup <- ((n-1) * s2) / chi2_sup
+  
+  return(c(lim_inf, s2, lim_sup))
+}
+
+ic_bootstrap <- function(x, confianza = 0.95, R = 1000) {
+  library(boot)
+  
+  boot_mean <- function(data, indices) {
+    return(mean(data[indices]))
+  }
+  
+  boot_result <- boot(x, boot_mean, R = R)
+  ic_percentil <- boot.ci(boot_result, conf = confianza, type = "perc")
+  
+  return(c(ic_percentil$percent[4], mean(x), ic_percentil$percent[5]))
+}
+```
+
+## TABLA RESUMEN INTERVALOS
+```{r}
+variables_clave <- c("PIB", "PIB_PC", "Deuda_Externa", "Exportaciones", 
+                     "Reservas_Internacionales", "FBKF", "Balance_fiscal")
+
+resultados_lista <- list()
+
+for(var in variables_clave) {
+  if(var %in% colnames(datos)) {
+    datos_var <- na.omit(datos[[var]])
+    
+    if(length(datos_var) > 10) {
+      ic_media <- ic_media_normal(datos_var, 0.95)
+      
+      resultados_lista[[var]] <- c(
+        Estimacion = ic_media[2],
+        IC95_Inferior = ic_media[1],
+        IC95_Superior = ic_media[3],
+        Amplitud = ic_media[3] - ic_media[1]
+      )
+    }
+  }
+}
+
+matriz_resultados <- do.call(rbind, resultados_lista)
+
+print("Intervalos de confianza 95% para medias:")
+print(round(matriz_resultados, 4))
+```
+
+Cuando calculamos los intervalos de confianza al 95% para medir qué tan seguros podíamos estar de nuestros promedios, nos encontramos con una disparidad enorme entre las variables. Mientras que el PIB per cápita se mantiene en un rango bastante acotado lo que refleja cierta estabilidad histórica, la Deuda Externa es el caso opuesto. Nos llamó mucho la atención que su intervalo es el más amplio y borroso de todos, con una amplitud gigantesca de $1.22 \times 10^{12}$. Esto confirma estadísticamente lo que sospechábamos al ver las gráficas: la deuda no fluctúa suavemente, sino que da saltos tan bruscos que intentar pronosticarla usando solo su promedio histórico es sumamente arriesgado debido a su inmensa volatilidad.
+
+Por otro lado, encontramos un foco rojo muy claro en la sostenibilidad fiscal. Al analizar el Balance Fiscal, nos dimos cuenta de que es la única variable cuyo intervalo de confianza cae completamente en terreno negativo. Incluso en su límite superior que sería el mejor escenario estadístico con 95% de confianza, seguimos viendo números rojos de $-3.14 \times 10^5$. Esto nos permite,  rechazar la idea de que el balance promedio sea cero o positivo, la evidencia es contundente al mostrar que existe un déficit estructural. Básicamente, los datos nos dicen que el gobierno gasta sistemáticamente más de lo que ingresa, lo cual valida por qué el país necesita financiamiento externo constante.
+
+Finalmente, algo que le da mucha solidez a nuestro modelo es el comportamiento de las variables de la "economía real". Tanto el PIB como las Exportaciones y la Inversión (FBKF) mostraron intervalos de confianza bastante estrechos y consistentes. Por ejemplo, el intervalo del PIB entre $1.83$ y $2.05 \times 10^7$ es lo suficientemente preciso para usar la media estimada como una referencia confiable. Al contrastar esto con la inestabilidad de la Deuda, llegamos a la conclusión de que la economía productiva de México es mucho más estable y predecible que su estructura financiera.
+
+
+## GRÁFICO COMPARATIVO DEUDA EXTERNA
+```{r}
+deuda_data <- na.omit(datos$Deuda_Externa)
+
+ic_t <- ic_media_normal(deuda_data, 0.95)
+ic_boot <- ic_bootstrap(deuda_data, 0.95, 1000)
+
+plot(c(1, 2), c(ic_t[2], ic_boot[2]), pch = 19, col = c("blue", "red"), 
+     cex = 1.5, xlim = c(0.5, 2.5), ylim = range(c(ic_t[1:3], ic_boot[c(1,3)])),
+     xlab = "Método", ylab = "Deuda Externa", xaxt = "n",
+     main = "Comparación IC: t-Student vs Bootstrap (Deuda Externa)")
+axis(1, at = 1:2, labels = c("t-Student", "Bootstrap"))
+
+segments(1, ic_t[1], 1, ic_t[3], col = "blue", lwd = 2)
+segments(0.9, ic_t[1], 1.1, ic_t[1], col = "blue", lwd = 1)
+segments(0.9, ic_t[3], 1.1, ic_t[3], col = "blue", lwd = 1)
+
+segments(2, ic_boot[1], 2, ic_boot[3], col = "red", lwd = 2)
+segments(1.9, ic_boot[1], 2.1, ic_boot[1], col = "red", lwd = 1)
+segments(1.9, ic_boot[3], 2.1, ic_boot[3], col = "red", lwd = 1)
+
+abline(h = ic_boot[2], col = "red", lty = 3, lwd = 1)
+
+legend("topright", legend = c("t-Student", "Bootstrap", "Media Bootstrap"),
+       col = c("blue", "red", "red"), pch = c(19, 19, NA),
+       lty = c(1, 1, 3), lwd = c(2, 2, 1))
+grid()
+```
+
+
+En esta gráfica quisimos poner a prueba qué tan confiables son nuestras  estimaciones de la Deuda Externa. Como vimos antes que los datos de la deuda  no se comportan como una campana normal perfecta y tienen saltos bruscos. Comparamos el intervalo calculado con la t-Student la línea azul contra el método de Bootstrap la línea roja, que funciona haciendo miles de simulaciones con los mismos datos para ver qué pasa sin asumir tantas reglas teóricas.
+
+Lo que se ve en la imagen los  bigotes las líneas verticales de ambos métodos son casi del mismo tamaño y caen prácticamente en el mismo rango. La media el punto en el centro también coincide perfecto con la línea roja punteada. Esto significa que, aunque la deuda tenga una distribución complicada, el cálculo del intervalo es robusto.
+
+Básicamente, el Bootstrap vino a confirmar lo que nos  dijo la t-Student. Si los resultados hubieran salido muy diferentes por ejemplo, si la línea roja estuviera muy lejos de la azul, tendriamos que preocuparnos por la validez de los datos, pero como se traslapan casi exacto, podemos decir con seguridad que el verdadero valor promedio de la deuda externa sí cae dentro de esos límites enormes que calculamos, sin importar qué método usemos.
+
+# INTERVALOS DE CONFIANZA PARA PIB PER CÁPITA
+```{r}
+pib_pc_data <- na.omit(datos$PIB_PC)
+
+n_pib_pc <- length(pib_pc_data)
+media_pib_pc <- mean(pib_pc_data)
+sd_pib_pc <- sd(pib_pc_data)
+
+log_pib_pc <- log(pib_pc_data)
+
+ic_log_media <- ic_media_normal(log_pib_pc, confianza = 0.95)
+ic_log_var <- ic_varianza_normal(log_pib_pc, confianza = 0.95)
+
+media_geom <- exp(mean(log_pib_pc))
+ic_media_original <- exp(ic_log_media[1])
+ic_media_original_sup <- exp(ic_log_media[3])
+
+ic_normal_directo <- ic_media_normal(pib_pc_data, confianza = 0.95)
+
+comparacion_pib_pc <- data.frame(
+  Metodo = c("Lognormal", "Normal Directa"),
+  Media = c(media_geom, ic_normal_directo[2]),
+  IC95_Inferior = c(ic_media_original, ic_normal_directo[1]),
+  IC95_Superior = c(ic_media_original_sup, ic_normal_directo[3])
+)
+
+print(comparacion_pib_pc)
+
+plot(1:2, comparacion_pib_pc$Media, pch = 19, col = "blue", cex = 1.5,
+     xlim = c(0.5, 2.5), ylim = range(comparacion_pib_pc[,3:4]),
+     xlab = "Método", ylab = "PIB per cápita", xaxt = "n",
+     main = "Comparación IC: Lognormal vs Normal")
+axis(1, at = 1:2, labels = comparacion_pib_pc$Metodo)
+
+segments(1:2, comparacion_pib_pc$IC95_Inferior, 
+         1:2, comparacion_pib_pc$IC95_Superior, 
+         col = "blue", lwd = 2)
+
+points(1:2, comparacion_pib_pc$IC95_Inferior, pch = 25, col = "red", bg = "red", cex = 1)
+points(1:2, comparacion_pib_pc$IC95_Superior, pch = 24, col = "red", bg = "red", cex = 1)
+
+abline(h = mean(pib_pc_data), col = "gray", lty = 3)
+grid()
+```
+En esta parte quisimos hacer un experimento para ver qué tanto afectaba la elección de la distribución teórica a los resultados del PIB per cápita. Comparamos el intervalo de confianza calculado asumiendo una Distribución Lognormal que se supone es la ideal para dinero y salarios contra una Distribución Normal estándar.
+
+Lo que muestra la gráfica es que las dos barras son prácticamente gemelas.Los puntos azules que son las medias estimadas están casi a la misma altura, y las flechas rojas que marcan hasta dónde llega el intervalo de confianza son casi idénticas en ambos casos. Esto significa que los datos del PIB per cápita son lo suficientemente nobles como para que no importe tanto qué método matemático se use, el resultado central no cambia drásticamente.
+
+
+```{r}
+datos <- datos[order(datos$...1), ]
+
+datos$Crecimiento_PIB <- c(NA, diff(datos$PIB) / datos$PIB[-nrow(datos)] * 100)
+
+variables_externas <- c("Exportaciones", "Deuda_Externa", "Reservas_Internacionales", 
+                        "FBKF", "TIIE", "Balance_fiscal")
+
+datos_limpios <- datos[complete.cases(datos[, c("Crecimiento_PIB", variables_externas)]), ]
+```
+
+
+
+
+# PRUEBAS DE HIPÓTESIS
+```{r}
+
+alta_deuda <- datos_limpios$Deuda_Externa > median(datos_limpios$Deuda_Externa)
+test_deb <- t.test(Crecimiento_PIB ~ alta_deuda, data = datos_limpios, alternative = "less")
+
+alta_tiie <- datos_limpios$TIIE > median(datos_limpios$TIIE)
+test_tiie <- t.test(Crecimiento_PIB ~ alta_tiie, data = datos_limpios)
+
+resultados_hipotesis <- data.frame(
+  Hipotesis = c("Deuda alta → Menor crecimiento", "TIIE alto afecta crecimiento"),
+  Estadistico = c(round(test_deb$statistic, 3), round(test_tiie$statistic, 3)),
+  P_valor = c(round(test_deb$p.value, 4), round(test_tiie$p.value, 4)),
+  Resultado = c(ifelse(test_deb$p.value < 0.05, "Rechaza H0", "No rechaza"),
+                ifelse(test_tiie$p.value < 0.05, "Rechaza H0", "No rechaza"))
+)
+
+print(resultados_hipotesis)
+```
+
+
+Resultados de nuestras Pruebas de Hipótesis
+Llegamos a la parte decisiva del proyecto, donde pusimos a prueba nuestras teorías usando los datos. Aquí fue donde los resultados nos sorprendieron un poco y nos obligaron a repensar lo que esperábamos encontrar.
+
+Primero, planteamos la hipótesis de que Una Deuda Externa alta provoca un menor crecimiento económico. Nuestra lógica, basada en la teoría, era que si el país debe mucho dinero, debería crecer menos. Sin embargo, al correr la prueba estadística, el P-valor nos dio altísimo 0.7097. Como este valor es mucho mayor a 0.05, no tenemos evidencia estadística para rechazar la hipótesis nula.
+
+ Básicamente, que los datos no respaldan la idea de que la deuda por sí sola frene el crecimiento de golpe. Creemos que esto pasa porque, como vimos en las gráficas anteriores, México ha usado la deuda para salvar la economía en momentos de crisis como en 2009 y 2020. Entonces, en lugar de ver una relación negativa simple, los datos muestran que la deuda sube cuando el gobierno intenta reactivar el PIB, lo que hace que la relación estadística no sea tan directa como pensábamos.
+
+También quisimos ver si la Tasa de Interés (TIIE) afectaba significativamente el crecimiento. Aquí nos pasó algo similar: obtuvimos un estadístico de -0.63 y un P-valor de 0.5354. Nuevamente, el resultado es "No rechaza". Esto nos indica que, al menos en este modelo, no podemos afirmar con certeza que los cambios en la tasa de interés dicten el ritmo del crecimiento económico de manera inmediata. Es probable que el efecto de las tasas tarde tiempo en sentirse rezagos o que dependa de otros factores externos que no metimos en esta prueba específica.
+
+No pudimos comprobar estadísticamente que la deuda o las tasas de interés sean malas o determinantes negativos para el crecimiento por sí solas en este periodo. Esto nos deja ver que la economía mexicana es mucho más compleja y que estas variables probablemente interactúan con otras cosas como las exportaciones para afectar al PIB.
+
+##  REGRESIÓN MÚLTIPLE
+```{r}
+formula_multi <- as.formula(paste("Crecimiento_PIB ~", paste(variables_externas, collapse = " + ")))
+modelo_multi <- lm(formula_multi, data = datos_limpios)
+resumen_multi <- summary(modelo_multi)
+
+coeficientes_multi <- coef(modelo_multi)
+
+tabla_coef_signif <- data.frame(
+  Variable = names(coeficientes_multi),
+  Coeficiente = round(coeficientes_multi, 4),
+  P_valor = round(summary(modelo_multi)$coefficients[, 4], 4),
+  Significativo = summary(modelo_multi)$coefficients[, 4] < 0.05
+)
+
+print(tabla_coef_signif)
+
+print(paste("R²:", round(resumen_multi$r.squared, 4)))
+print(paste("R² ajustado:", round(resumen_multi$adj.r.squared, 4)))
+```
+
+##  GRÁFICO DE COEFICIENTES
+```{r}
+coef_sin_intercepto <- coeficientes_multi[-1]
+
+
+coef_ordenados <- sort(coef_sin_intercepto)
+
+
+par(mar = c(5, 8, 4, 2))
+barplot(coef_ordenados, 
+        names.arg = names(coef_ordenados),
+        horiz = TRUE, las = 1,
+        col = ifelse(coef_ordenados > 0, "green", "red"),
+        xlab = "Coeficiente",
+        main = "Impacto en Crecimiento PIB (Regresión Múltiple)",
+        xlim = c(min(coef_ordenados)*1.2, max(coef_ordenados)*1.2))
+abline(v = 0, lwd = 2)
+par(mar = c(5, 4, 4, 2))
+```
+Partiendo de los resultados anteriores hicimos una regresión para observar que tanto peso tenían sin embargo  es muy pequeño el peso que se tiene, tambien podemos observar que la deuda externa y la TIIE son las unicas significativas.
+ 
+
+# ANÁLISIS DE RESIDUALES
+```{r}
+residuales <- residuals(modelo_multi)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 2))
+
+plot(fitted(modelo_multi), residuales, pch = 19, col = "blue",
+     xlab = "Valores ajustados", ylab = "Residuales",
+     main = "Residuales vs Ajustados")
+abline(h = 0, col = "red", lwd = 2)
+
+qqnorm(residuales, main = "QQ-plot Residuales")
+qqline(residuales, col = "red")
+
+hist(residuales, freq = FALSE, breaks = 15,
+     main = "Distribución Residuales",
+     xlab = "Residuales", col = "lightblue")
+curve(dnorm(x, mean(residuales), sd(residuales)), add = TRUE, col = "red", lwd = 2)
+
+plot(residuales, type = "b", pch = 19, col = "blue",
+     xlab = "Orden", ylab = "Residuales",
+     main = "Residuales vs Orden")
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+
+
+shapiro_test <- shapiro.test(residuales)
+print(paste("Shapiro-Wilk: W =", round(shapiro_test$statistic, 4), 
+            "p =", round(shapiro_test$p.value, 4)))
+```
+
+Después de obtener los resultados de las regresiones y pruebas de hipótesis, sabíamos que no podíamos confiar ciegamente en los números sin antes hacer un check-up técnico al modelo. Para eso, generamos estas gráficas de análisis de residuales, que básicamente nos dicen si las suposiciones matemáticas que hicimos son válidas o si hay errores escondidos. La buena noticia es que las gráficas nos dieron luz verde para confiar en nuestro análisis.
+
+Primero, nos fijamos en la gráfica de Residuales vs. Ajustados. Aquí lo que buscábamos era que los puntos azules estuvieran regados como una nube sin forma, y eso fue justo lo que encontramos. No vemos ningún patrón de embudo o curva extraña, los puntos están dispersos aleatoriamente alrededor de la línea roja del cero. Esto es excelente porque significa que la varianza de nuestros errores es constante no hay problemas graves de heterocedasticidad y que el modelo lineal fue la elección correcta para estos datos.
+
+Luego, revisamos si los errores seguían una distribución Normal, lo cual es requisito para que las pruebas de hipótesis que hicimos antes sean válidas. En el QQ-plot, vemos que los círculos se alinean casi perfectamente sobre la línea diagonal roja. Aunque hay un par de puntos en las esquinas que se salen un poquito, la gran mayoría se comporta muy bien. Esto se confirma con el Histograma, donde la curva roja de la campana de Gauss cubre bastante bien las barras azules.
+
+A partir de lo que habíamos obtenido algo  nos hacía ruido por lo que decidimos investigar y encontramos que existe la curva de laffer razon Deuda-PIB así que decidimos hacerla para nuestros datos y comprobar una vez mas si tienen peso las variables en el crecimiento. El modelo utilizado es el siguiente:
+
+$$
+\ln(PIB_{pc})_t = \beta_0 + \beta_1 \ln(D\_PUB)_t + \beta_2 \ln(D\_PUB)^2_t + \beta_3 \ln(BF)_t + \beta_4 \ln(RESER)_t + \beta_5 \ln(FBKF)_t + \beta_6 \ln(TI)_t + \beta_7 \ln(EXPOR)_t + \varepsilon_t
+$$
+
+```{r}
+datos_modelos <- datos %>%
+  mutate(
+
+    ln_PIB_pc = log(PIB_PC),
+
+    ln_D_PUB = log(Deuda_Externa),
+    ln_D_PUB_sq = (log(Deuda_Externa))^2,
+
+    ln_FBKF = log(FBKF),
+    ln_TIIE = log(TIIE),
+    ln_RESER = log(Reservas_Internacionales),
+    ln_EXPOR = log(Exportaciones),
+    
+    Balance_neg_dummy = ifelse(Balance_fiscal < 0, 1, 0)
+  ) %>%
+dplyr::select(ln_PIB_pc, ln_D_PUB, ln_D_PUB_sq, ln_FBKF, ln_TIIE, 
+         ln_RESER, ln_EXPOR, Balance_neg_dummy)
+
+
+
+```
+
+
+Debido a que es un modelo logaritmico no podiamos aplicarle el logaritmo a el balance debido a que contiene datos negativos por lo que decidimos hacer la variable dummy y utilizamos la parte negativa.
+```{r}
+modelo_parsimonioso <- lm(ln_PIB_pc ~ ln_D_PUB + ln_D_PUB_sq + ln_RESER + ln_FBKF + ln_EXPOR + Balance_neg_dummy, data = datos_modelos)
+
+
+summary(modelo_parsimonioso)
+```
+Realizando la regresión múltiple, lo primero que nos llamó la atención fue la increíble precisión con la que logramos explicar el comportamiento del PIB per cápita. El coeficiente de determinación R-cuadrada nos dio un valor de 0.9492, lo que significa que las variables que elegimos deuda, inversión, exportaciones y reservas explican casi el 95% de la variabilidad en el ingreso promedio de los mexicanos. Esto es un gran logro para el proyecto, porque confirma que no estamos dejando fuera factores importantes y que el modelo ajusta casi a la perfección con la realidad histórica de los datos. Además, el P-valor global es extremadamente pequeño $4.088 \times 10^{-13}$, lo que nos asegura que la relación que encontramos no es producto del azar.
+
+Uno de los hallazgos más interesantes y complejos que encontramos tiene que ver con la Deuda Pública. Decidimos incluir tanto el término lineal como el cuadrático para probar si el efecto cambiaba con el tiempo, y los resultados confirmaron nuestra sospecha de una relación no lineal. El coeficiente de la deuda simple (ln_D_PUB) es positivo 1.35, pero el de la deuda al cuadrado (ln_D_PUB_sq) es negativo -0.024. Económicamente, esto nos dice que la deuda tiene un comportamiento de "U invertida": en niveles bajos, endeudarse ayuda a impulsar el crecimiento signo positivo, pero a medida que la deuda crece excesivamente, el efecto se revierte y empieza a frenar el PIB per cápita signo negativo.
+
+Por otro lado, confirmamos quiénes son los verdaderos motores de la economía. Tanto la Formación Bruta de Capital Fijo (ln_FBKF) como las Exportaciones (ln_EXPOR) mostraron coeficientes positivos y altamente significativos con el nivel de significancia más alto de tres asteriscos. Específicamente, por cada 1% que aumentan las exportaciones, el PIB per cápita sube aproximadamente 0.25%, mientras que la inversión lo hace subir un 0.22%. Esto nos permite afirmar con evidencia estadística que la apertura comercial y la inversión física son las variables más nobles y efectivas para generar riqueza real en el país.
+
+Finalmente, las variables de control financiero nos mostraron el costo de la inestabilidad. La variable dummy del Balance Fiscal (Balance_neg_dummy) arrojó un coeficiente negativo de -0.042, lo que valida que los años con déficit fiscal castigan el crecimiento del ingreso per cápita. También notamos que las Reservas Internacionales (ln_RESER) tienen una relación negativa significativa con el PIB per cápita -0.08 interpretamos esto no como que las reservas sean malas, sino que su acumulación masiva suele ocurrir en periodos de incertidumbre o crisis cambiaria, cuando el crecimiento económico tiende a ser bajo, capturando así una correlación contracíclica en el modelo, ademas que tambien se debe a que es dinero un poco estancado ya que esta en dolares y no se invierte en el país por lo que no genera crecimiento.
+
+```{r}
+
+cat("\n=== UMBRAL ÓPTIMO DE DEUDA  ===\n")
+
+
+calcular_umbral <- function(modelo) {
+  coefs <- coef(modelo)
+  ln_umbral <- -coefs["ln_D_PUB"] / (2 * coefs["ln_D_PUB_sq"])
+  umbral_original <- exp(ln_umbral)
+  return(umbral_original)
+}
+
+
+umbral_parsimonioso <- calcular_umbral(modelo_parsimonioso)
+
+cat("Umbral óptimo de deuda:", round(umbral_parsimonioso, 2), "\n")
+
+deuda_promedio <- mean(exp(datos_modelos$ln_D_PUB))
+cat("Deuda promedio en el período:", round(deuda_promedio, 2), "\n")
+
+
+diferencia_porcentaje <- (umbral_parsimonioso/deuda_promedio - 1) * 100
+cat("→ Diferencia respecto al promedio:", round(diferencia_porcentaje, 1), "%\n")
+```
+```{r}
+ggplot(datos_modelos, aes(x = exp(ln_D_PUB), y = exp(ln_PIB_pc))) +
+  geom_point(color = "blue", size = 3) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = TRUE, color = "red") +
+  geom_vline(xintercept = umbral_parsimonioso, linetype = "dashed", color = "green", size = 1) +
+  labs(title = "Curva de Laffer: Relación Deuda-Crecimiento",
+       subtitle = paste("Umbral óptimo:", round(umbral_parsimonioso, 2)),
+       x = "Deuda Total", 
+       y = "PIB per cápita") +
+  theme_minimal()
+```
+Basándonos en los coeficientes de nuestro modelo de regresión donde encontramos que la deuda tiene un efecto positivo al principio pero negativo después, decidimos calcular  dónde está exactamente ese límite. Queríamos encontrar el punto optimo de deuda o el nivel de deuda que maximiza el crecimiento del PIB per cápita antes de empezar a perjudicarlo. El resultado de nuestro cálculo arrojó un Umbral Óptimo de aproximadamente $1.01 \times 10^{12}$ un billón.
+
+Sin embargo, al comparar este número teórico con la realidad, nos llevamos una sorpresa preocupante. La Deuda Promedio observada durante el periodo de estudio fue de $2.10 \times 10^{12}$ 2.1 billones. Esto significa que, en promedio, México ha estado operando con un nivel de endeudamiento que es más del doble del nivel óptimo sugerido por nuestro modelo. Estadísticamente, estamos situados un 51.9% por encima del punto de eficiencia.
+
+Este hallazgo es crucial, nos indica que México ya cruzó la cima de la curva de Laffer de la deuda. Al estar tan pasados del umbral óptimo del lado derecho de la U invertida, cada peso adicional que el país pide prestado ya no contribuye a generar más riqueza per cápita, al contrario, es probable que los costos del servicio de la deuda y la incertidumbre financiera estén restando dinamismo a la economía. Básicamente, demostramos con datos que el endeudamiento excesivo ha dejado de ser una palanca de desarrollo para convertirse en una carga.
+
+
+# ANOVA PARA DEUDA EXTERNA POR SEXENIOS
+```{r}
+
+
+
+if(!"Sexenio" %in% colnames(datos)) {
+  datos$Sexenio <- cut(datos$...1,
+                       breaks = c(1993, 2000, 2006, 2012, 2018, 2024),
+                       labels = c("1994-2000", "2001-2006", "2007-2012", 
+                                  "2013-2018", "2019-2024"))
+}
+
+
+anova_deuda <- aov(Deuda_Externa ~ Sexenio, data = datos)
+summary_anova_deuda <- summary(anova_deuda)
+
+print("ANOVA - Deuda Externa por Sexenio:")
+print(summary_anova_deuda)
+
+if(summary_anova_deuda[[1]]$`Pr(>F)`[1] < 0.05) {
+  print("Prueba post-hoc Tukey (diferencias entre sexenios):")
+  tukey_deuda <- TukeyHSD(anova_deuda)
+  print(tukey_deuda)
+  
+
+  par(mar = c(5, 8, 4, 2))
+  plot(tukey_deuda, las = 1)
+  par(mar = c(5, 4, 4, 2))
+}
+
+p_deuda <- ggplot(datos, aes(x = Sexenio, y = Deuda_Externa, fill = Sexenio)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red") +
+  labs(title = "Deuda Externa por Sexenio", 
+       x = "Sexenio Presidencial", 
+       y = "Deuda Externa") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+
+print(p_deuda)
+
+estadisticas_deuda <- aggregate(Deuda_Externa ~ Sexenio, data = datos,
+                                FUN = function(x) c(Media = mean(x), 
+                                                   SD = sd(x),
+                                                   Min = min(x),
+                                                   Max = max(x),
+                                                   n = length(x)))
+
+print("Estadísticas Deuda Externa por Sexenio:")
+print(estadisticas_deuda)
+```
+
+Para entender mejor el comportamiento de la deuda, decidimos no verla solo como una línea continua, sino partirla por administraciones o sexenios. Hicimos esto porque sospechábamos que las decisiones políticas de cada gobierno afectaban los niveles de endeudamiento de forma distinta. Al generar este diagrama de cajas, confirmamos visualmente que existen dos eras muy marcadas en la historia reciente de México.
+
+Lo primero que notamos es la Era de Estabilidad 1994-2006. Si observan las dos primeras cajas , son pequeñitas y están muy abajo. Esto nos dice que durante esos dos sexenios, la deuda externa se mantuvo baja y, lo más importante, muy estable poca varianza. Los promedios los puntos rojos casi no se movieron. En ese entonces, la deuda no era un tema que generara ruido en nuestras pruebas estadísticas.
+
+Sin embargo, a partir del sexenio **2007-2012**, vemos el cambio drástico. La caja se hace más alta y sube de nivel, lo cual coincide con la Crisis Financiera de 2008 que nos obligó a pedir prestado. Pero lo más impactante viene después: en el periodo **2013-2018**, la caja es enorme. Esto significa que no solo subió la deuda promedio, sino que hubo una volatilidad gigantesca, hubo años donde la deuda creció descontroladamente.
+
+Finalmente, el sexenio actual **2019-2024** muestra los niveles más altos de la historia, con la caja flotando hasta arriba, cerca de los 5 billones. Aunque la caja es un poco más compacta que la anterior menos volátil, el "piso" de la deuda ya es altísimo.
+
+Esta gráfica prueba que la media de la deuda no es constante en el tiempo (heterogeneidad). Pasamos de una política de deuda cautelosa a una de endeudamiento acelerado. Esto respalda por qué en nuestro modelo de regresión la deuda salió tan significativa y por qué encontramos ese comportamiento de "U invertida": los niveles actuales las cajas de la derecha ya están en la zona donde la deuda empieza a pesarle al crecimiento.
+
+
+## ANOVA PARA PIB PER CÁPITA POR SEXENIOS
+```{r}
+anova_pibpc <- aov(PIB_PC ~ Sexenio, data = datos)
+summary_anova_pibpc <- summary(anova_pibpc)
+
+print("ANOVA - PIB per cápita por Sexenio:")
+print(summary_anova_pibpc)
+
+
+if(summary_anova_pibpc[[1]]$`Pr(>F)`[1] < 0.05) {
+  print("Prueba post-hoc Tukey (diferencias entre sexenios):")
+  tukey_pibpc <- TukeyHSD(anova_pibpc)
+  print(tukey_pibpc)
+  
+  
+  par(mar = c(5, 8, 4, 2))
+  plot(tukey_pibpc, las = 1)
+  par(mar = c(5, 4, 4, 2))
+}
+
+
+p_pibpc <- ggplot(datos, aes(x = Sexenio, y = PIB_PC, fill = Sexenio)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red") +
+  labs(title = "PIB per cápita por Sexenio", 
+       x = "Sexenio Presidencial", 
+       y = "PIB per cápita") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+
+print(p_pibpc)
+
+
+estadisticas_pibpc <- aggregate(PIB_PC ~ Sexenio, data = datos,
+                                FUN = function(x) c(Media = mean(x), 
+                                                   SD = sd(x),
+                                                   Min = min(x),
+                                                   Max = max(x),
+                                                   n = length(x)))
+
+print("Estadísticas PIB per cápita por Sexenio:")
+print(estadisticas_pibpc)
+
+p_medias <- ggplot(datos, aes(x = Sexenio, y = PIB_PC, fill = Sexenio)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "pointrange", size = 0.7) +
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "blue", size = 1) +
+  labs(title = "Medias de PIB per cápita por Sexenio",
+       subtitle = "Puntos: medias, Barras: IC 95%",
+       x = "Sexenio Presidencial",
+       y = "PIB per cápita") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+
+print(p_medias)
+```
+
+Al igual que hicimos con la deuda, decidimos desglosar el ingreso promedio de los mexicanos PIB per cápita por administraciones presidenciales para ver si realmente estamos mejor con el paso del tiempo. Esta gráfica de cajas nos cuenta una historia muy clara de crecimiento, pero también de los riesgos que hemos enfrentado en cada periodo. Lo primero que notamos con satisfacción es que la tendencia general es ascendente. Si se fijan en los puntos rojos que son los promedios, cada sexenio supera al anterior. Esto significa que, a pesar de las crisis y problemas, la riqueza promedio del país ha seguido una trayectoria de crecimiento a largo plazo.
+
+Sin embargo, al analizar la forma de las cajas, la dispersión, encontramos diferencias clave en la estabilidad económica de cada gobierno. Por ejemplo, el sexenio 2001-2006 la segunda caja amarilla destaca por ser el más  compacto, esto nos dice que fue un periodo de mucha estabilidad macroeconómica donde el ingreso no varió bruscamente. En contraste, el sexenio 2007-2012 la caja verde es mucho más alto, reflejando la volatilidad que trajo la crisis financiera de 2008.
+
+Lo más interesante y dramático aparece en el sexenio actual 2019-2024. Aunque la caja rosa alcanza el nivel promedio más alto de la historia el punto rojo está más arriba que todos, también tiene un bigote o línea inferior larguísima que cae hasta los 170,000 pesos. Esto es la huella estadística de la pandemia de 2020: un desplome brutal que, aunque fue temporal, generó una dispersión enorme en los datos de este periodo.
+
+Si bien el PIB per cápita promedio es hoy más alto que hace 20 años, la gráfica nos muestra que el crecimiento no es gratuito, viene acompañado de periodos de alta volatilidad. Mientras que algunos gobiernos ofrecieron estancamiento con estabilidad como el de 2001-2006, otros, como el actual y el de 2007-2012, lograron promedios más altos pero a costa de sufrir choques externos violentos que estiraron la distribución de los datos hacia abajo.
+
+
+
+# Conclusión
+
+
+Al finalizar este estudio estadístico sobre los determinantes del crecimiento económico de México, podemos afirmar que hemos cumplido con el objetivo general planteado: evaluar cuantitativamente la relación entre las variables macroeconómicas y el desempeño del PIB. La evidencia empírica recabada nos permite aceptar la Hipótesis General $H_1$, confirmando que la Deuda Externa, las Exportaciones, las Reservas Internacionales y la Inversión (FBKF) tienen un efecto estadísticamente significativo en la economía, aunque la naturaleza de estos efectos resultó ser mucho más compleja de lo que anticipábamos inicialmente.
+
+Nuestros hallazgos se pueden resumir en tres pilares fundamentales:
+
+**1. Los Motores del Crecimiento: Comercio e Inversión**
+Tal como sugería la teoría económica, nuestro modelo econométrico con una $R^2$ del 95% demostró que las Exportaciones y la Formación Bruta de Capital Fijo (FBKF) son los verdaderos impulsores del bienestar. Ambas variables presentaron coeficientes positivos y altamente significativos, validando que la apertura comercial y la inversión en capital físico son las rutas más efectivas para incrementar el PIB per cápita. La correlación positiva observada desde el inicio del análisis no fue espuria, sino causal.
+
+**2. La "Paradoja" de la Deuda y el Umbral Óptimo**
+El descubrimiento más crítico del equipo fue la relación no lineal de la Deuda Pública. Mientras que nuestras pruebas de hipótesis simples iniciales no lograban identificar un efecto negativo directo, la regresión cuadrática reveló un comportamiento de "U invertida". Esto significa que la deuda no es mala, sino que tiene un límite. Nuestro cálculo del Punto Óptimo $\approx 1$ billón frente al promedio observado $\approx 2.1$ billones es una alerta estadística: México ha operado, en promedio, un 51.9% por encima de su nivel óptimo de endeudamiento. Esto nos lleva a concluir que, en los últimos sexenios, la deuda ha dejado de ser una palanca de crecimiento para convertirse en un factor de saturación que, marginalmente, ya no aporta al PIB per cápita.
+
+**3. Deterioro Fiscal y Volatilidad Estructural**
+El análisis de intervalos de confianza nos mostró un déficit fiscal estructural, el intervalo del balance siempre fue negativo, y los diagramas de caja por sexenio evidenciaron un cambio de régimen a partir de 2008. Pasamos de una etapa de estabilidad financiera a una de alta volatilidad y endeudamiento acelerado. Si bien el PIB per cápita ha mantenido una tendencia creciente a largo plazo, los bigotes de las cajas en los sexenios recientes especialmente 2019-2024 demuestran que el crecimiento actual es mucho más vulnerable a choques externos que en el pasado.
+
+Finalmente, respaldamos todas estas conclusiones en la robustez de nuestros métodos. La convergencia casi perfecta entre los estimadores de Momentos (MOM) y Máxima Verosimilitud (MLE), sumada a un análisis de residuales que confirmó normalidad y homocedasticidad, nos garantiza que estos resultados no son producto del azar ni de errores de especificación.
+
+El proyecto demuestra estadísticamente que para que México retome una senda de crecimiento acelerado, no basta con seguir endeudándose pues ya cruzamos el límite productivo, la estrategia debe centrarse en potenciar las variables reales Exportaciones y FBKF y recuperar la disciplina fiscal que se perdió hace más de una década.
+
+## Bibliografía
+
+Soto, V. G. (2020). La curva de Laffer en la relación dedua externa-crecimiento económico de México 1970-
+2017. Revista mexicana de economía y finanzas, 205-225.
+
+
+
+
